@@ -1,25 +1,26 @@
 name: Release Candidate
 on: 
-  pull_request:
-    branches:
+  push:
+    branches-ignore:
       - master
 jobs:
   package:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [[self-hosted,linux,arm64,build], [self-hosted,linux,arm64,build]]
+        os: [[x64, self-hosted,linux,build], [arm64,self-hosted,linux, build]]
       fail-fast: false
     steps:
-      - uses: AutoModality/action-clean@v1
-      - uses: actions/checkout@v1
+      - uses: AutoModality/action-clean@v1.1.0
+      - uses: actions/checkout@v2
+      - uses: rlespinasse/github-slug-action@2.0.0 # for GITHUB_REF_SLUG
       - name: Package
         id: package
         uses: AutoModality/action-package-debian-ros@v3
         with:
-          branch: ${{ github.event.pull_request.head.ref }}
-          pull-request-number: ${{ github.event.number }}
+          branch: ${{ env.GITHUB_REF_SLUG }}
           build-number: ${{ github.run_number }}
+          release-repo-entitlement: ${{ secrets.CLOUDSMITH_READ_RELEASE_ENTITLEMENT }}
       - name: The generated package
         run: echo "The artifact is ${{ steps.package.outputs.artifact-path }}"
       - name: Deploy
@@ -34,3 +35,22 @@ jobs:
           distro: 'ubuntu'
           release: 'bionic'
           file: '${{ steps.package.outputs.artifact-path }}'
+  draft-pr:
+    runs-on: ubuntu-18.04
+    needs: package
+    steps:
+      - uses: actions/checkout@v2
+      - name: Draft a Pull Request
+        uses: repo-sync/pull-request@v2
+        with:
+          pr_draft: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+  # code-format:
+  #   runs-on: ubuntu-18.04
+  #   needs: package
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Format Code
+  #       uses: AutoModality/action-ros-clang-format@master
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
