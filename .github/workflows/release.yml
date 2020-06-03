@@ -9,7 +9,6 @@ env:
   RELEASE_PAYLOAD_FILE: release/payload.json
 jobs:
   release-package:
-    needs: release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
