@@ -1,0 +1,13 @@
+Source: dji-onboard-sdk
+Section: unknown
+Priority: extra
+Maintainer: AutoModality <dev@automodality.com>
+Build-Depends: cmake, debhelper (>=9), libusb-dev, libusb-1.0-0-dev, libusb-1.0-0
+Standards-Version: 3.9.6
+Homepage: https://github.com/AutoModality/Onboard-SDK
+
+Package: dji-onboard-sdk
+Architecture: any
+Multi-Arch: foreign
+Depends: ${misc:Depends}, ${shlibs:Depends}, libusb-dev, libusb-1.0-0-dev, libusb-1.0-0
+Description: DJI's Onboard SDK packaged by AutoModality

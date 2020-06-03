@@ -56,3 +56,7 @@ osdk-core/mo-protocol-*
 osdk-core/waypointv2-core*
 cmake-build-debug
 .vscode/
+.history
+am-onboard-sdk-build-deps_*_all.deb
+debian/am-onboard-sdk*
+debian/.debhelper/

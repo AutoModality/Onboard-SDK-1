@@ -1,0 +1,66 @@
+name: Release
+on: 
+  push:
+    branches:
+      - master
+env:
+  RELEASE_DIR: release
+  RELEASE_PROPERTIES_FILE: release/release.properties
+  RELEASE_PAYLOAD_FILE: release/payload.json
+jobs:
+  release-package:
+    needs: release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, [arm64,self-hosted,linux, build]]
+      fail-fast: true
+    name: Package if released
+    steps:
+      - name: Package
+        id: package
+        uses: AutoModality/action-package-debian-ros@v3
+        with:
+          version: 4.0.0-AM${{ github.run_number }}
+          release-repo-entitlement: ${{ secrets.CLOUDSMITH_READ_RELEASE_ENTITLEMENT }}
+      - name: Deploy
+        id: deploy
+        uses: AutoModality/action-cloudsmith@0.2.0
+        with:
+          api-key: ${{ secrets.CLOUDSMITH_API_KEY }}
+          command: 'push'
+          format: 'deb'
+          owner: 'automodality'
+          repo: 'release'
+          distro: 'ubuntu'
+          release: 'bionic'
+          file: '${{ steps.package.outputs.artifact-path }}'
+  notify-amros:
+    needs: release-package
+    runs-on: ubuntu-latest
+    name: Notify AMROS
+    steps:
+      - name: Download release
+        uses: actions/download-artifact@v1
+        with:
+          name: release
+          path: ${{ env.RELEASE_DIR }}
+      - name: Read Published
+        id: published
+        uses: christian-draeger/read-properties@1.0.1
+        with:
+          path: ${{ env.RELEASE_PROPERTIES_FILE }}
+          property: 'published'
+      - name: Payload env
+        run: |
+            payload=$(cat ${{ env.RELEASE_PAYLOAD_FILE }} )
+            echo ::set-env name=RELEASE_PAYLOAD::$payload
+      - name: Notify AMROS of Release
+        if: steps.published.outputs.value == 'true'
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.AMGITBOT_PAT }}
+          repository: AutoModality/amros
+          event-type: package-released
+          client-payload: "${{ env.RELEASE_PAYLOAD }}"
+      
