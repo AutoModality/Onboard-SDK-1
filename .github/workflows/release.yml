@@ -21,7 +21,7 @@ jobs:
         id: package
         uses: AutoModality/action-package-debian-ros@v3
         with:
-          version: 4.0.0-AM01
+          version: 4.0.0-AM${{ github.run_number }}
           release-repo-entitlement: ${{ secrets.CLOUDSMITH_READ_RELEASE_ENTITLEMENT }}
       - name: Deploy
         id: deploy
