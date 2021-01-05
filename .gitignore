@@ -60,3 +60,4 @@ cmake-build-debug
 am-onboard-sdk-build-deps_*_all.deb
 debian/am-onboard-sdk*
 debian/.debhelper/
+debian/rules
