@@ -1,5 +1,5 @@
 /*! @file dji_linux_helpers.cpp
- *  @version 3.3
+ *  @version 4.0.0
  *  @date Sep 12 2017
  *
  *  @brief
@@ -153,7 +153,7 @@ LinuxSetup::setupEnvironment(int argc, char** argv)
       acm_device_path = argv[i];
       break;
     }
-    printf("argv[%d] = %s\n", i, argv[i]);
+
     if (strlen(argv[i]) == 1)
     {
       std::cout << "Find sample case parameter : " <<  argv[i] << std::endl;

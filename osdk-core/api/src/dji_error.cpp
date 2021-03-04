@@ -1,5 +1,5 @@
 /** @file dji_error.cpp
- *  @version 3.3
+ *  @version 4.0.0
  *  @date April 2017
  *
  *  @brief All DJI OSDK OpenProtocol ACK Error Codes
@@ -313,6 +313,13 @@ const uint8_t DJI::OSDK::ErrorCode::MFIOACK::get::SUCCESS               = 0x00;
 
 const uint8_t& DJI::OSDK::ErrorCode::MissionACK::WayPoint::DISTANCE_OVERFLOW = DJI::OSDK::ErrorCode::MissionACK::WayPoint::TRACE_TOO_LONG;
 const uint8_t& DJI::OSDK::ErrorCode::MissionACK::WayPoint::TIMEOUT = DJI::OSDK::ErrorCode::MissionACK::WayPoint::TOTAL_DISTANCE_TOO_LONG;
+
+
+/*! flight controller control tasl error code */
+const ErrorCode::ErrorCodeType ErrorCode::FlightControllerErr::SetControlParam::ObtainJoystickCtrlAuthorityFail = ErrorCode::getErrorCode(FCModule, FCControlTask, ControlACK::SetControl::OBTAIN_CONTROL_IN_PROGRESS);
+const ErrorCode::ErrorCodeType ErrorCode::FlightControllerErr::SetControlParam::ReleaseJoystickCtrlAuthorityFail = ErrorCode::getErrorCode(FCModule, FCControlTask, ControlACK::SetControl::RELEASE_CONTROL_IN_PROGRESS);
+const ErrorCode::ErrorCodeType ErrorCode::FlightControllerErr::SetControlParam::ObtainJoystickCtrlAuthoritySuccess = ErrorCode::getErrorCode(FCModule, FCControlTask, ControlACK::SetControl::OBTAIN_CONTROL_SUCCESS);
+const ErrorCode::ErrorCodeType ErrorCode::FlightControllerErr::SetControlParam::ReleaseJoystickCtrlAuthoritySuccess = ErrorCode::getErrorCode(FCModule, FCControlTask, ControlACK::SetControl::RELEASE_CONTROL_SUCCESS);
 
 
 

@@ -1,5 +1,5 @@
 /*! @file flight_sample.cpp
- *  @version 4.0
+ *  @version 4.0.0
  *  @date  Dec 2019
  *
  *  @brief
@@ -39,7 +39,7 @@ static const double EarthCenter = 6378137.0;
 static const double DEG2RAD = 0.01745329252;
 
 FlightSample::FlightSample(Vehicle* vehicle) { this->vehicle = vehicle; }
-FlightSample::~FlightSample() { delete (this->vehicle); }
+FlightSample::~FlightSample() {}
 
 bool FlightSample::monitoredTakeoff(int timeout) {
   int pkgIndex = 0;
@@ -84,6 +84,90 @@ bool FlightSample::monitoredTakeoff(int timeout) {
   return true;
 }
 
+bool FlightSample::monitoredLanding(int timeout)
+{
+   /*! Step 1: Verify and setup the subscription */
+  const int pkgIndex = 0;
+  int freq = 10;
+  TopicName topicList[] = {TOPIC_STATUS_FLIGHT, TOPIC_STATUS_DISPLAYMODE};
+  int topicSize = sizeof(topicList) / sizeof(topicList[0]);
+  setUpSubscription(pkgIndex, freq, topicList, topicSize, timeout);
+
+  /*! Step 2: Start landing */
+  DSTATUS("Start landing action");
+  ErrorCode::ErrorCodeType landingErrCode = vehicle->flightController->startLandingSync(timeout);
+  if (landingErrCode != ErrorCode::SysCommonErr::Success)
+  {
+    DERROR( "Fail to execute landing action! Error code: "
+            "%llx\n ",landingErrCode);
+    return false;
+  }
+
+   /*! Step 3: check Landing start*/
+  if (!checkActionStarted(VehicleStatus::DisplayMode::MODE_AUTO_LANDING))
+  {
+    DERROR("Fail to execute Landing action!");
+    return false;
+  } 
+  else
+  {
+    /*! Step 4: check Landing finished*/
+    if (this->landFinishedCheck())
+    {
+      DSTATUS("Successful landing!");
+    }
+    else
+    {
+      DERROR("Landing finished, but the aircraft is in an unexpected mode. "
+             "Please connect DJI Assistant.");
+      teardownSubscription(pkgIndex, timeout);
+      return false;
+    }
+  }
+
+  /*! Step 5: Cleanup */
+  teardownSubscription(pkgIndex, timeout);
+  return true;
+
+}
+
+
+void FlightSample::velocityAndYawRateCtrl(const Vector3f &offsetDesired,
+                                          float yawRate,uint32_t timeMs)
+{
+  uint32_t originTime  = 0;
+  uint32_t currentTime = 0;
+  uint32_t elapsedTimeInMs = 0;
+  OsdkOsal_GetTimeMs(&originTime);
+  OsdkOsal_GetTimeMs(&currentTime);
+  elapsedTimeInMs = currentTime - originTime;
+
+  FlightController::JoystickMode joystickMode = {
+    FlightController::HorizontalLogic::HORIZONTAL_VELOCITY,
+    FlightController::VerticalLogic::VERTICAL_VELOCITY,
+    FlightController::YawLogic::YAW_RATE,
+    FlightController::HorizontalCoordinate::HORIZONTAL_GROUND,
+    FlightController::StableMode::STABLE_ENABLE,
+  };
+
+  vehicle->flightController->setJoystickMode(joystickMode);
+  FlightController::JoystickCommand joystickCommand = {offsetDesired.x, offsetDesired.y, offsetDesired.z,yawRate};
+  vehicle->flightController->setJoystickCommand(joystickCommand);
+
+  while(elapsedTimeInMs <= timeMs)
+  {
+    vehicle->flightController->joystickAction();
+    usleep(20000);
+    OsdkOsal_GetTimeMs(&currentTime);
+    elapsedTimeInMs = currentTime - originTime;
+  }
+}
+
+ void FlightSample::emergencyBrake()
+ {
+   vehicle->flightController->emergencyBrakeAction();
+ }
+
 bool FlightSample::moveByPositionOffset(const Vector3f& offsetDesired,
                                         float yawDesiredInDeg,
                                         float posThresholdInM,
@@ -101,18 +185,26 @@ bool FlightSample::moveByPositionOffset(const Vector3f& offsetDesired,
   int speedFactor = 2;
 
   int pkgIndex = 0;
-  TopicName topicList[] = {TOPIC_QUATERNION, TOPIC_GPS_FUSED,
-                           TOPIC_HEIGHT_FUSION};
+  TopicName topicList[] = {TOPIC_QUATERNION, TOPIC_GPS_FUSED};
   int numTopic = sizeof(topicList) / sizeof(topicList[0]);
   if (!setUpSubscription(pkgIndex, controlFreqInHz, topicList, numTopic,
                          responseTimeout)) {
     return false;
   }
+
+  /* now we need position-height broadcast to obtain the real-time altitude of the aircraft, 
+   * which is consistent with the altitude closed-loop data of flight control internal position control
+   * TO DO:the data will be replaced by new data subscription.
+   */
+  if (!startGlobalPositionBroadcast())
+  {
+    return false;
+  }
   sleep(1);
+
   //! get origin position and relative height(from home point)of aircraft.
   Telemetry::TypeMap<TOPIC_GPS_FUSED>::type originGPSPosition =
       vehicle->subscribe->getValue<TOPIC_GPS_FUSED>();
-  /*! TODO: TOPIC_HEIGHT_FUSION is abnormal in real world but normal in simulator */
   Telemetry::GlobalPosition currentBroadcastGP = vehicle->broadcast->getGlobalPosition();
   float32_t originHeightBaseHomepoint = currentBroadcastGP.height;
   FlightController::JoystickMode joystickMode = {
@@ -129,10 +221,12 @@ bool FlightSample::moveByPositionOffset(const Vector3f& offsetDesired,
         vehicle->subscribe->getValue<TOPIC_GPS_FUSED>();
     Telemetry::TypeMap<TOPIC_QUATERNION>::type currentQuaternion =
         vehicle->subscribe->getValue<TOPIC_QUATERNION>();
+    currentBroadcastGP = vehicle->broadcast->getGlobalPosition();
     float yawInRad = quaternionToEulerAngle(currentQuaternion).z;
     //! get the vector between aircraft and origin point.
-    Vector3f localOffset =
-        localOffsetFromGpsOffset(currentGPSPosition, originGPSPosition);
+
+    Vector3f localOffset = localOffsetFromGpsAndFusedHeightOffset(currentGPSPosition, originGPSPosition,
+                                                                  currentBroadcastGP.height, originHeightBaseHomepoint);
     //! get the vector between aircraft and target point.
     Vector3f offsetRemaining = vector3FSub(offsetDesired, localOffset);
 
@@ -172,7 +266,7 @@ bool FlightSample::moveByPositionOffset(const Vector3f& offsetDesired,
 
   while (brakeCounter < withinControlBoundsTimeReqmt) {
     //! TODO: remove emergencyBrake
-    vehicle->control->emergencyBrake();
+    vehicle->flightController->emergencyBrakeAction();
     usleep(cycleTimeInMs * 1000);
     brakeCounter += cycleTimeInMs;
   }
@@ -328,6 +422,56 @@ bool FlightSample::teardownSubscription(const int pkgIndex, int timeout) {
   return true;
 }
 
+bool FlightSample::startGlobalPositionBroadcast(void)
+{
+   uint8_t freq[16];
+
+  /* Channels definition for A3/N3/M600
+   * 0 - Timestamp
+   * 1 - Attitude Quaternions
+   * 2 - Acceleration
+   * 3 - Velocity (Ground Frame)
+   * 4 - Angular Velocity (Body Frame)
+   * 5 - Position
+   * 6 - GPS Detailed Information
+   * 7 - RTK Detailed Information
+   * 8 - Magnetometer
+   * 9 - RC Channels Data
+   * 10 - Gimbal Data
+   * 11 - Flight Status
+   * 12 - Battery Level
+   * 13 - Control Information
+   */
+  freq[0]  = DataBroadcast::FREQ_HOLD;
+  freq[1]  = DataBroadcast::FREQ_HOLD;
+  freq[2]  = DataBroadcast::FREQ_HOLD;
+  freq[3]  = DataBroadcast::FREQ_HOLD;
+  freq[4]  = DataBroadcast::FREQ_HOLD;
+  /* We need this data to obtain the real-time altitude of the aircraft, 
+   * which is consistent with the altitude closed-loop data of flight control internal position control
+   */
+  freq[5]  = DataBroadcast::FREQ_50HZ; 
+  freq[6]  = DataBroadcast::FREQ_HOLD;
+  freq[7]  = DataBroadcast::FREQ_HOLD;
+  freq[8]  = DataBroadcast::FREQ_HOLD;
+  freq[9]  = DataBroadcast::FREQ_HOLD;
+  freq[10] = DataBroadcast::FREQ_HOLD;
+  freq[11] = DataBroadcast::FREQ_HOLD;
+  freq[12] = DataBroadcast::FREQ_HOLD;
+  freq[13] = DataBroadcast::FREQ_HOLD;
+
+  ACK::ErrorCode ack = vehicle->broadcast->setBroadcastFreq(freq, 1);
+  if (ACK::getError(ack))
+  {
+    ACK::getErrorCodeMessage(ack, __func__);
+    return false;
+  }
+  else
+  {
+    return true;
+  }
+}
+
 bool FlightSample::checkActionStarted(uint8_t mode) {
   int actionNotStarted = 0;
   int timeoutCycles = 20;
@@ -464,14 +608,15 @@ Vector3f FlightSample::vector3FSub(const Vector3f& vectorA,
   return result;
 }
 
-Vector3f FlightSample::localOffsetFromGpsOffset(
-    const Telemetry::GPSFused& target, const Telemetry::GPSFused& origin) {
+Vector3f FlightSample::localOffsetFromGpsAndFusedHeightOffset(
+    const Telemetry::GPSFused& target, const Telemetry::GPSFused& origin,
+    const float32_t& targetHeight, const float32_t& originHeight) {
   Telemetry::Vector3f deltaNed;
   double deltaLon = target.longitude - origin.longitude;
   double deltaLat = target.latitude - origin.latitude;
   deltaNed.x = deltaLat * EarthCenter;
   deltaNed.y = deltaLon * EarthCenter * cos(target.latitude);
-  deltaNed.z = target.altitude - origin.altitude;
+  deltaNed.z = targetHeight - originHeight;
   return deltaNed;
 }
 
@@ -520,3 +665,20 @@ bool FlightSample::takeoffFinishedCheck() {
              ? true
              : false;
 }
+
+ bool FlightSample::landFinishedCheck(void)
+ {
+    while(vehicle->subscribe->getValue<TOPIC_STATUS_DISPLAYMODE>() ==
+               VehicleStatus::DisplayMode::MODE_AUTO_LANDING &&
+           vehicle->subscribe->getValue<TOPIC_STATUS_FLIGHT>() ==
+               VehicleStatus::FlightStatus::IN_AIR)
+   {
+      Platform::instance().taskSleepMs(1000);
+   }
+
+   return ((vehicle->subscribe->getValue<TOPIC_STATUS_DISPLAYMODE>() !=
+           VehicleStatus::DisplayMode::MODE_P_GPS ||
+           vehicle->subscribe->getValue<TOPIC_STATUS_DISPLAYMODE>() !=
+           VehicleStatus::DisplayMode::MODE_ATTITUDE)) ? true:false;
+ }
+

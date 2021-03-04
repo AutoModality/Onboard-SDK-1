@@ -46,6 +46,7 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug")
 endif ()
 
 if (COVERAGE)
+  message(---- djiosdk-core COVERAGE MODE)
   SET(GCC_COVERAGE_COMPILE_FLAGS "-fprofile-arcs -ftest-coverage -fPIC")
   SET(GCC_COVERAGE_LINK_FLAGS    "-lgcov")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${GCC_COVERAGE_COMPILE_FLAGS}")
@@ -88,8 +89,7 @@ include_directories(
         modules/inc/mop
         platform/inc
         logger/inc
-        utility/inc
-        linker/${ARCH}/inc)
+        utility/inc)
 
 ## Source code for OSDK CORE
 FILE(GLOB OSDK_LIB_SRCS
@@ -104,7 +104,26 @@ FILE(GLOB OSDK_LIB_SRCS
         logger/src/*.cpp
         utility/src/*.cpp)
 
-link_libraries(${CMAKE_CURRENT_SOURCE_DIR}/linker/${ARCH}/lib/libdji-linker.a)
+if(LINKER_DEBUG)
+  message("-- Internal linker source debug")
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker)
+  include_directories(
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker/core
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker/core/channel
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker/core/command
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker/core/logger
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker/core/mop
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker/core/mop/mop_core/inc
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker/core/platform
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker/core/protocol
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker/core/root_task
+          ${CMAKE_CURRENT_SOURCE_DIR}/sdk-linker/core/utils/inc)
+  link_libraries(dji-linker)
+else()
+  include_directories(linker/${ARCH}/inc)
+  link_libraries(${CMAKE_CURRENT_SOURCE_DIR}/linker/${ARCH}/lib/libdji-linker.a)
+endif()
 
 add_library(${PROJECT_NAME}
         STATIC
@@ -127,6 +146,10 @@ set(ADVANCED_SENSING_HEADERS_DIR
 ## Libraries to propagate as dependencies to third-party code depending on osdk-core
 ## Append to this variable when you want a dependency to get propagated
 SET(OSDK_INTERFACE_LIBS pthread) # pthread is assumed available on linux
+
+if (COVERAGE)
+  set(OSDK_INTERFACE_LIBS ${OSDK_INTERFACE_LIBS}  gcov)
+endif()
 
 ## Modules to link/build against
 ## Append to these variables with build/install locations when adding new OSDK modules

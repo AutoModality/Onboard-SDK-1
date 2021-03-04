@@ -1,5 +1,5 @@
 /*! @file mobile_sample.cpp
- *  @version 3.3
+ *  @version 4.0.0
  *  @date Jun 05 2017
  *
  *  @brief
@@ -39,6 +39,17 @@ uint16_t mobileDataID_glob = 0;
 // command state
 bool keepLoopRunning = true;
 
+void *activateTask(void *arg) {
+  if (arg) {
+    LinuxSetup* linuxEnvironment = (LinuxSetup*)arg;
+    Vehicle *vehicle = linuxEnvironment->getVehicle();
+    vehicle->activate(linuxEnvironment->getActivateData(),
+                      activateMobileCallback);
+  }
+
+  return NULL;
+}
+
 void
 parseFromMobileCallback(Vehicle* vehicle, RecvContainer recvFrame,
                         UserData userData)
@@ -68,8 +79,10 @@ parseFromMobileCallback(Vehicle* vehicle, RecvContainer recvFrame,
       vehicle->control->releaseCtrlAuthority(controlAuthorityMobileCallback, &mobile_data_id);
       break;
     case 4:
-      vehicle->activate(linuxEnvironment->getActivateData(),
-                        activateMobileCallback);
+      T_OsdkTaskHandle mobileActivateHandle;
+      OsdkOsal_TaskCreate(&mobileActivateHandle, activateTask,
+                          OSDK_TASK_STACK_SIZE_DEFAULT,
+                          linuxEnvironment);
       break;
     case 5:
       vehicle->control->armMotors(actionMobileCallback, &mobile_data_id);
@@ -363,9 +376,9 @@ runPositionControlSample(Vehicle* vehicle)
 {
   bool positionControlError = false;
   positionControlError      = monitoredTakeoff(vehicle);
-  positionControlError &= moveByPositionOffset(vehicle, 0, 6, 6, 30);
-  positionControlError &= moveByPositionOffset(vehicle, 6, 0, -3, -30);
-  positionControlError &= moveByPositionOffset(vehicle, -6, -6, 0, 0);
+  positionControlError &= moveByPositionOffset(vehicle, 0, 6, 6, 30, 0.8, 1);
+  positionControlError &= moveByPositionOffset(vehicle, 6, 0, -3, -30, 0.8, 1);
+  positionControlError &= moveByPositionOffset(vehicle, -6, -6, 0, 0, 0.8, 1);
   positionControlError &= monitoredLanding(vehicle);
 
   return (!positionControlError); // We want to return success status, not error

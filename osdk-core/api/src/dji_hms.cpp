@@ -1,5 +1,5 @@
 /** @file dji_hms.cpp
- *  @version 4.0
+ *  @version 4.0.0
  *  @date Dec 2019
  *
  *  @brief HMS(Health Management System) API for DJI OSDK
@@ -199,7 +199,6 @@ static bool MarchErrCodeInfoTbl(DJIHMSImpl *djiHMSImpl, HMSPushData *hmsPushData
         DSTATUS("HMS Push Data is nullptr!");
         return false;
     }
-    OsdkOsal_TaskSleepMs(200);
 
     for (int i = 0; i < hmsPushData->errList.size(); i++)
     {
@@ -217,7 +216,7 @@ static bool MarchErrCodeInfoTbl(DJIHMSImpl *djiHMSImpl, HMSPushData *hmsPushData
                                                   hmsPushData->errList[i].alarmID,
                                                   hmsPushData->errList[i].sensorIndex,
                                                   djiHMSImpl->getDeviceIndex());
-                            DSTATUS("TimeStamp: %ld.Info: %s\n", djiHMSImpl->getHMSPushPacket().timeStamp,
+                            DSTATUS("TimeStamp: %u.Info: %s", djiHMSImpl->getHMSPushPacket().timeStamp,
                                     DJI::OSDK::hmsErrCodeInfoTbl[j].flyAlarmInfo.c_str());
                         }
                         break;
@@ -230,7 +229,7 @@ static bool MarchErrCodeInfoTbl(DJIHMSImpl *djiHMSImpl, HMSPushData *hmsPushData
                                                   hmsPushData->errList[i].alarmID,
                                                   hmsPushData->errList[i].sensorIndex,
                                                   djiHMSImpl->getDeviceIndex());
-                            DSTATUS("TimeStamp: %ld.Info:%s\n",djiHMSImpl->getHMSPushPacket().timeStamp,
+                            DSTATUS("TimeStamp: %u.Info:%s",djiHMSImpl->getHMSPushPacket().timeStamp,
                                     DJI::OSDK::hmsErrCodeInfoTbl[j].groundAlarmInfo.c_str());
                         }
                         break;

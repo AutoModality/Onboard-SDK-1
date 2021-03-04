@@ -1,5 +1,5 @@
 /** @file dji_camera_manager.hpp
- *  @version 3.9
+ *  @version 4.0.0
  *  @date July 2019
  *
  *  @brief Implementation of the manager for camera module
@@ -48,6 +48,7 @@ class CameraManager {
  public:
   /*! @brief init the camera module
    *
+   *  @platforms M210V2, M300
    *  @param index camera module index, input limit see enum
    * DJI::OSDK::PayloadIndexType
    *  @param name camera module name used in initialization
@@ -60,6 +61,8 @@ class CameraManager {
    *  to initCameraModule. It means this camera will disable.
    *  In the deinit, the camera module will set name to be
    *  defaultCameraName and set enable to be false.
+   *
+   *  @platforms M210V2, M300
    *  @param index camera module index, input limit see enum
    * DJI::OSDK::PayloadIndexType
    *  @return ErrorCode::ErrorCodeType error code
@@ -67,11 +70,14 @@ class CameraManager {
   ErrorCode::ErrorCodeType deinitCameraModule(PayloadIndexType index);
 
   /*! @brief deinit all the camera modules
+   *
+   *  @platforms M210V2, M300
    */
   void deinitAllCameraModule(void);
 
   /*! @brief get the name of camera module, searched by index
    *
+   *  @platforms M210V2, M300
    *  @param index camera module index, input limit see enum
    * DJI::OSDK::PayloadIndexType
    *  @param name name of the camera module, it's a output parameter. If get
@@ -83,6 +89,7 @@ class CameraManager {
 
   /*! @brief get the index of camera module, searched by name
    *
+   *  @platforms M210V2, M300
    *  @param name name of camera module
    *  @param index camera module index, see enum DJI::OSDK::PayloadIndexType. If
    * get fail, this parameter will not do any assignment
@@ -93,6 +100,7 @@ class CameraManager {
 
   /*! @brief get the enable status of camera module, searched by index
    *
+   *  @platforms M210V2, M300
    *  @param index camera module index, input limit see enum
    * DJI::OSDK::PayloadIndexType
    *  @param enable get the enable status of CameraModule. If get fail, this
@@ -102,9 +110,13 @@ class CameraManager {
   ErrorCode::ErrorCodeType getCameraModuleEnable(PayloadIndexType index,
                                                  bool &enable);
 
+  std::string getCameraVersion(PayloadIndexType index);
+
+  std::string getFirmwareVersion(PayloadIndexType index);
  public:
   /*! @brief start to shoot photo, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Camera must be in ShootPhoto mode. For thermal imaging camera,
    * Single photo can be taken while recording video. The SD card state should
    * be checked before this method is used to ensure sufficient space exists.
@@ -133,6 +145,7 @@ class CameraManager {
 
   /*! @brief start to shoot photo, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Camera must be in ShootPhoto mode. For thermal imaging camera,
    * Single photo can be taken while recording video. The SD card state should
    * be checked before this method is used to ensure sufficient space exists.
@@ -152,6 +165,7 @@ class CameraManager {
 
   /*! @brief stop to shoot photo, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note  startShootPhoto has been invoked and the shoot mode is either
    * Interval or Time-lapse. If the capture mode is set to Single, the camera
    * will automatically stop taking the photo once the individual photo is
@@ -176,6 +190,7 @@ class CameraManager {
 
   /*! @brief stop to shoot photo, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note  startShootPhoto has been invoked and the shoot mode is either
    * Interval or Time-lapse. If the capture mode is set to Single, the camera
    * will automatically stop taking the photo once the individual photo is
@@ -193,6 +208,7 @@ class CameraManager {
 
   /*! @brief set the shoot photo mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note It should be paid attention that if timeout, the callback will not
    * be called. This issue will be fixed in the future.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -215,6 +231,7 @@ class CameraManager {
 
   /*! @brief set the shoot photo mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -231,6 +248,7 @@ class CameraManager {
 
   /*! @brief get the shoot photo mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note It should be paid attention that if timeout, the callback will not
    * be called. This issue will be fixed in the future.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -255,6 +273,7 @@ class CameraManager {
 
   /*! @brief get the shoot photo mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -272,6 +291,7 @@ class CameraManager {
   /*! @brief set the burst count in the Burst take-photo mode, non-blocking
    * calls
    *
+   *  @platforms M210V2, M300
    *  @note It should be paid attention that if timeout, the callback will not
    * be called. This issue will be fixed in the future.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -294,6 +314,7 @@ class CameraManager {
 
   /*! @brief set the burst count in the Burst take-photo mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -309,6 +330,7 @@ class CameraManager {
 
   /*! get the burst count in the Burst take-photo mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note It should be paid attention that if timeout, the callback will not
    * be called. This issue will be fixed in the future.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -333,6 +355,7 @@ class CameraManager {
 
   /*! @brief get the burst count in the Burst take-photo mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -349,6 +372,7 @@ class CameraManager {
 
   /*! @brief set the burst count in the AEB take-photo mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note It should be paid attention that if timeout, the callback will not
    * be called. This issue will be fixed in the future.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -371,6 +395,7 @@ class CameraManager {
 
   /*! @brief set the burst count in the AEB take-photo mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -386,6 +411,7 @@ class CameraManager {
 
   /*! get the burst count in the AEB take-photo mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note It should be paid attention that if timeout, the callback will not
    * be called. This issue will be fixed in the future.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -410,6 +436,7 @@ class CameraManager {
 
   /*! @brief get the burst count in the AEB take-photo mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -426,6 +453,7 @@ class CameraManager {
   /*! @brief set the parameters in the INTERVAL take-photo mode, non-blocking
    * calls
    *
+   *  @platforms M210V2, M300
    *  @note When in this shoot-photo mode, The camera will capture a photo, wait
    * a specified interval of time, take another photo, and continue in this
    * manner until it has taken the required number of photos. Also supported by
@@ -452,6 +480,7 @@ class CameraManager {
 
   /*! @brief set the parameters in the INTERVAL take-photo mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note When in this shoot-photo mode, The camera will capture a photo, wait
    * a specified interval of time, take another photo, and continue in this
    * manner until it has taken the required number of photos. Also supported by
@@ -473,6 +502,7 @@ class CameraManager {
   /*! @brief get the parameters in the INTERVAL take-photo mode, non-blocking
    * calls
    *
+   *  @platforms M210V2, M300
    *  @note It should be paid attention that if timeout, the callback will not
    * be called. This issue will be fixed in the future.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -497,6 +527,7 @@ class CameraManager {
 
   /*! @brief get the parameters in the INTERVAL take-photo mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -513,6 +544,7 @@ class CameraManager {
 
   /*! @brief start to take video, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Camera must be in RECORD_VIDEO mode. For thermal imaging camera,
    * user can take Single photo when recording video.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -535,6 +567,7 @@ class CameraManager {
 
   /*! @brief start to take video, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Camera must be in RECORD_VIDEO mode. For thermal imaging camera,
    * user can take Single photo when recording video.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -550,6 +583,7 @@ class CameraManager {
 
   /*! @brief stop to take video, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Precondition: The camera is recording currently.
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
@@ -571,6 +605,7 @@ class CameraManager {
 
   /*! @brief stop to take video, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Precondition: The camera is recording currently.
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
@@ -585,6 +620,7 @@ class CameraManager {
 
   /*! @brief set camera working mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the camera's work mode to taking pictures, video, playback or
    * download. Please note that you cannot change the mode when a certain task
    * is executing, such as taking photo(s), recording video, or downloading and
@@ -613,6 +649,7 @@ class CameraManager {
 
   /*! @brief set camera working mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the camera's work mode to taking pictures, video, playback or
    * download. Please note that you cannot change the mode when a certain task
    * is executing, such as taking photo(s), recording video, or downloading and
@@ -636,6 +673,7 @@ class CameraManager {
 
   /*! @brief get camera working mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -659,6 +697,7 @@ class CameraManager {
 
   /*! @brief get camera working mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -675,6 +714,7 @@ class CameraManager {
 
   /*! @brief set camera focus mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the lens focus mode. When the focus mode is auto, the target
    *  point is the focal point. When the focus mode is manual, the target point
    *  is the zoom out area if the focus assistant is enabled for the manual
@@ -705,6 +745,7 @@ class CameraManager {
 
   /*! @brief get camera focus mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the lens focus mode. When the focus mode is auto, the target
    *  point is the focal point. When the focus mode is manual, the target point
    *  is the zoom out area if the focus assistant is enabled for the manual
@@ -729,6 +770,7 @@ class CameraManager {
 
   /*! @brief get camera focus mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Gets the lens focus mode. Please check FocusMode. Supported only by
    * the X5, X5R, Z3 cameras, Mavic Pro camera, Z30, Phantom 4 Pro camera, X4S,
    * X5S, Mavic 2 Pro, Mavic 2 Zoom Camera and Mavic 2 Enterprise Camera.
@@ -755,6 +797,7 @@ class CameraManager {
 
   /*! @brief get camera focus mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Gets the lens focus mode. Please check FocusMode. Supported only by
    * the X5, X5R, Z3 cameras, Mavic Pro camera, Z30, Phantom 4 Pro camera, X4S,
    * X5S, Mavic 2 Pro, Mavic 2 Zoom Camera and Mavic 2 Enterprise Camera.
@@ -774,6 +817,7 @@ class CameraManager {
 
   /*! @brief set camera tap focus target point, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the lens focus target point. When the focus mode is auto, the
    * target point is the focal point. When the focus mode is manual, the target
    * point is the zoom out area if the focus assistant is enabled for the manual
@@ -801,6 +845,7 @@ class CameraManager {
 
   /*! @brief set camera focus point, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the lens focus target point. When the focus mode is auto, the
    * target point is the focal point. When the focus mode is manual, the target
    * point is the zoom out area if the focus assistant is enabled for the manual
@@ -822,6 +867,7 @@ class CameraManager {
 
   /*! @brief get camera tap focus target point, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Gets the lens focus target point. Supported only by the X5,
    * X5R, Z3 cameras, Mavic Pro camera and Phantom 4 Pro camera, X4S, X5S, Mavic
    * 2 Pro, Mavic 2 Zoom Camera and Mavic 2 Enterprise Camera.
@@ -849,6 +895,7 @@ class CameraManager {
 
   /*! @brief get camera focus point, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Gets the lens focus target point. Supported only by the X5,
    * X5R, Z3 cameras, Mavic Pro camera and Phantom 4 Pro camera, X4S, X5S, Mavic
    * 2 Pro, Mavic 2 Zoom Camera and Mavic 2 Enterprise Camera.
@@ -868,6 +915,7 @@ class CameraManager {
 
   /*! @brief start camera optical zooming, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Start changing the focal length of the lens in specified direction
    * with specified speed. Focal length change (zooming) will halt when maximum
    * or minimum focal lengths are reached, or stopContinuousOpticalZoom* is
@@ -897,6 +945,7 @@ class CameraManager {
 
   /*! @brief start camera optical zooming, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Start changing the focal length of the lens in specified direction
    * with specified speed. Focal length change (zooming) will halt when maximum
    * or minimum focal lengths are reached, or stopContinuousOpticalZoom* is
@@ -919,6 +968,7 @@ class CameraManager {
 
   /*! @brief set parameters for camera optical zooming, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note It is only supported by X5, X5R and X5S camera on Osmo with lens
    * Olympus M.Zuiko ED 14-42mm f/3.5-5.6 EZ, Z3 camera, Z30 camera.
    *  @note In this interface, the zoom will set the zoom factor as the your
@@ -932,6 +982,7 @@ class CameraManager {
 
   /*! @brief get parameters of camera optical zooming, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note It is only supported by X5, X5R and X5S camera on Osmo with lens
    * Olympus M.Zuiko ED 14-42mm f/3.5-5.6 EZ, Z3 camera, Z30 camera.
    *  @note In this interface, the zoom will set the zoom factor as the your
@@ -945,6 +996,7 @@ class CameraManager {
 
   /*! @brief stop camera optical zooming, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Called to stop focal length changing, when it currently is from
    * calling startContinuousOpticalZoom*. It is only supported by X5, X5R and
    * X5S camera on Osmo with lens Olympus M.Zuiko ED 14-42mm f/3.5-5.6 EZ, Z3
@@ -967,6 +1019,7 @@ class CameraManager {
 
   /*! @brief stop camera optical zooming, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Called to stop focal length changing, when it currently is from
    * calling startContinuousOpticalZoom*. It is only supported by X5, X5R and
    * X5S camera on Osmo with lens Olympus M.Zuiko ED 14-42mm f/3.5-5.6 EZ, Z3
@@ -982,8 +1035,9 @@ class CameraManager {
 
   /*! @brief set camera tap zoom function parameters, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Enable/disable TapZoom. tapZoomAtTarget can only be called when
-   * TapZoom is enabled. It is only supported Z30 camera.
+   * TapZoom is enabled. It is only supported Z30 camera or H20/H20T zoom mode.
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1006,8 +1060,9 @@ class CameraManager {
 
   /*! @brief set camera tap zoom parameters, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Enable/disable TapZoom. tapZoomAtTarget can only be called when
-   * TapZoom is enabled. It is only supported Z30 camera.
+   * TapZoom is enabled. It is only supported Z30 camera or H20/H20T zoom mode.
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1023,6 +1078,7 @@ class CameraManager {
 
   /*! @brief get camera tap zoom function parameters, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Determines whether TapZoom is enabled. It is only supported by Z30
    * camera.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -1047,6 +1103,7 @@ class CameraManager {
 
   /*! @brief get camera tap zoom parameters, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Determines whether TapZoom is enabled. It is only supported by Z30
    * camera.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -1063,6 +1120,7 @@ class CameraManager {
 
   /*! @brief set camera tap zoom function parameters, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note TapZoom uses a multiplier to change the zoom scale when called. The
    * final zoom scale for a TapZoom will be: Current Zoom Scale x Multiplier.
    * The multiplier range is [1,5]. A multiplier of 1 will not change the zoom.
@@ -1090,6 +1148,7 @@ class CameraManager {
 
   /*! @brief set camera tap zoom parameters, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note TapZoom uses a multiplier to change the zoom scale when called. The
    * final zoom scale for a TapZoom will be: Current Zoom Scale x Multiplier.
    * The multiplier range is [1,5]. A multiplier of 1 will not change the zoom.
@@ -1111,6 +1170,7 @@ class CameraManager {
 
   /*! @brief get camera tap zoom function parameters, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Gets the multiplier for TapZoom. It is only supported by Z30 camera.
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
@@ -1135,6 +1195,7 @@ class CameraManager {
 
   /*! @brief get camera tap zoom parameters, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Gets the multiplier for TapZoom. It is only supported by Z30 camera.
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
@@ -1151,10 +1212,12 @@ class CameraManager {
 
   /*! @brief set camera tap zoom point, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note TapZoom at the target. It can be called only when TapZoom is
    * enabled. When a new target is set, the gimbal will rotate and locate the
    * target in the center of the screen. At the same time, the camera will zoom
-   * by multiplying the TapZoom multiplier. It is only supported Z30 camera.
+   * by multiplying the TapZoom multiplier. It is only supported Z30 camera
+   * or H20/H20T zoom mode.
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1176,10 +1239,12 @@ class CameraManager {
 
   /*! @brief set camera tap zoom point, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note TapZoom at the target. It can be called only when TapZoom is
    * enabled. When a new target is set, the gimbal will rotate and locate the
    * target in the center of the screen. At the same time, the camera will zoom
-   * by multiplying the TapZoom multiplier. It is only supported Z30 camera.
+   * by multiplying the TapZoom multiplier. It is only supported Z30 camera
+   * or H20/H20T zoom mode.
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1195,6 +1260,7 @@ class CameraManager {
 
   /*! @brief set camera exposure mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note The different exposure modes define whether Aperture, Shutter Speed,
    * ISO can be set automatically or manually. Exposure compensation can be
    * changed in all modes except Manual mode where it is not settable. X5, X5R,
@@ -1229,6 +1295,7 @@ class CameraManager {
 
   /*! @brief set camera exposure mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note The different exposure modes define whether Aperture, Shutter Speed,
    * ISO can be set automatically or manually. Exposure compensation can be
    * changed in all modes except Manual mode where it is not settable. X5, X5R,
@@ -1257,6 +1324,7 @@ class CameraManager {
 
   /*! @brief get camera exposure mode, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1279,6 +1347,7 @@ class CameraManager {
 
   /*! @brief get camera exposure mode, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1295,6 +1364,7 @@ class CameraManager {
 
   /*! @brief set camera iso value, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the camera's ISO value. For the X5, X5R, Phantom 4 Pro camera,
    * X4S and X5S, the ISO value can be set for all modes. For the other cameras,
    * the ISO value can only be set when the camera exposure mode is in Manual
@@ -1321,6 +1391,7 @@ class CameraManager {
 
   /*! @brief set camera iso value, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the camera's ISO value. For the X5, X5R, Phantom 4 Pro camera,
    * X4S and X5S, the ISO value can be set for all modes. For the other cameras,
    * the ISO value can only be set when the camera exposure mode is in Manual
@@ -1340,6 +1411,7 @@ class CameraManager {
 
   /*! @brief get camera iso value, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note It should be paid attention that if timeout, the callback will not
    * be called. This issue will be fixed in the future.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -1363,6 +1435,7 @@ class CameraManager {
 
   /*! @brief get camera iso value, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1378,6 +1451,7 @@ class CameraManager {
 
   /*! @brief set camera aperture size value, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note The exposure mode ExposureMode must be in MANUAL or
    * APERTURE_PRIORITY. Supported only by the X5, X5R, X4S, X5S camera and Mavic
    * 2 Pro.
@@ -1403,6 +1477,7 @@ class CameraManager {
 
   /*! @brief set camera aperture size value, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note The exposure mode ExposureMode must be in MANUAL or
    * APERTURE_PRIORITY. Supported only by the X5, X5R, X4S, X5S camera and Mavic
    * 2 Pro.
@@ -1422,6 +1497,7 @@ class CameraManager {
 
   /*! @brief get camera aperture size value, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1445,6 +1521,7 @@ class CameraManager {
 
   /*! @brief get camera aperture size value, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1461,6 +1538,7 @@ class CameraManager {
 
   /*! @brief set camera shutter value, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the camera shutter speed. The shutter speed should not be set
    * slower than the video frame rate when the camera's mode is RECORD_VIDEO.
    * For example, if the video frame rate is 30fps, the shutterSpeed must be <=
@@ -1488,6 +1566,7 @@ class CameraManager {
 
   /*! @brief set camera shutter value, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the camera shutter speed. The shutter speed should not be set
    * slower than the video frame rate when the camera's mode is RECORD_VIDEO.
    * For example, if the video frame rate is 30fps, the shutterSpeed must be <=
@@ -1509,6 +1588,7 @@ class CameraManager {
 
   /*! @brief get camera shutter value, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1533,6 +1613,7 @@ class CameraManager {
 
   /*! @brief get camera shutter value, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1549,6 +1630,7 @@ class CameraManager {
 
   /*! @brief set camera EV value, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the camera's exposure compensation. In order to use this
    * function, set the camera exposure mode to shutter, program or aperture.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -1573,6 +1655,7 @@ class CameraManager {
 
   /*! @brief set camera EV value, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note Sets the camera's exposure compensation. In order to use this
    * function, set the camera exposure mode to shutter, program or aperture.
    *  @note All the APIs whose name ending with sync or async in this class
@@ -1591,6 +1674,7 @@ class CameraManager {
 
   /*! @brief get camera EV value, non-blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1615,6 +1699,7 @@ class CameraManager {
 
   /*! @brief get camera EV value, blocking calls
    *
+   *  @platforms M210V2, M300
    *  @note All the APIs whose name ending with sync or async in this class
    * have a restriction on calling. All these API should not be called until
    * the previous request receives ack or timeout.
@@ -1629,21 +1714,56 @@ class CameraManager {
       PayloadIndexType index, CameraModule::ExposureCompensation &ev,
       int timeout);
 
+  /*! @brief obtain the download right from camera, blocking calls
+   *
+   *  @platforms M300
+   *  @param index camera module index, input limit see enum
+   * DJI::OSDK::PayloadIndexType
+   *  @param enable enable or disable the right of download
+   *  @param timeout blocking timeout in seconds
+   *  @return ErrorCode::ErrorCodeType error code
+   */
   ErrorCode::ErrorCodeType obtainDownloadRightSync(PayloadIndexType index,
                                                    bool enable, int timeout);
 #if defined(__linux__)
-  ErrorCode::ErrorCodeType startReqFileList(FileMgr::FileListReqCBType cb, void *userData);
-  ErrorCode::ErrorCodeType startReqFileData(int fileIndex, std::string localPath, FileMgr::FileDataReqCBType cb, void *userData);
+  /*! @brief start to requeset the filelist data of camera, non-blocking calls
+   *
+   *  @platforms M300
+   *  @param index Camera module index, input limit see enum
+   * DJI::OSDK::PayloadIndexType
+   *  @param cb The download result will be called by this cb. The detail
+   * of the callback ref to the DJI::OSDK::FileMgr::FileListReqCBType
+   *  @param userData The parameter to pass user data into the cb
+   *  @return ErrorCode::ErrorCodeType error code
+   */
+  ErrorCode::ErrorCodeType startReqFileList(PayloadIndexType index, FileMgr::FileListReqCBType cb, void *userData);
+
+  /*! @brief start to requeset the files of camera, non-blocking calls
+   *
+   *  @platforms M300
+   *  @param index Camera module index, input limit see enum
+   * DJI::OSDK::PayloadIndexType
+   *  @param fileIndex The file index of the target file. The file index can be
+   * got from the file list.
+   *  @param localPath The target path to save the file to be downloaded.
+   *  @param cb The download result will be called by this cb. The detail
+   * of the callback ref to the DJI::OSDK::FileMgr::FileDataReqCBType
+   *  @param userData The parameter to pass user data into the cb
+   *  @return ErrorCode::ErrorCodeType error code
+   */
+  ErrorCode::ErrorCodeType startReqFileData(PayloadIndexType index, int fileIndex, std::string localPath, FileMgr::FileDataReqCBType cb, void *userData);
 #endif
  private:
 #if defined(__linux__)
   FileMgr *fileMgr;
 #endif
   std::vector<CameraModule *> cameraModuleVector;
+  Linker *linker;
 
   CameraModule *getCameraModule(PayloadIndexType index);
   CameraModule *getCameraModule(std::string name);
-
+  void m300LensCbInit(Linker *linker);
+  void m300LensCbDeinit(Linker *linker);
   /*! @note default name of camera module */
   const char *defaultCameraName = "uninitialized_camera";
 };

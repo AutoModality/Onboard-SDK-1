@@ -1,5 +1,5 @@
 /*! @file FlightControlSample.cpp
- *  @version 3.3
+ *  @version 4.0.0
  *  @date May 2017
  *
  *  @brief
@@ -35,7 +35,6 @@ extern Vehicle* v;
 bool
 monitoredTakeOff()
 {
-  //@todo: remove this once the getErrorCode function signature changes
   char           func[50];
   ACK::ErrorCode ack;
   int            pkgIndex;
@@ -99,7 +98,7 @@ monitoredTakeOff()
 
   // First check: Motors started
   uint32_t CONTROL_TIMEOUT = 15000; // milliseconds
-  uint32_t RETRY_TICK      = 500;   // milliseconds
+  uint32_t RETRY_TICK      = 100;   // milliseconds
   uint32_t nextRetryTick   = 0;     // millisesonds
   uint32_t timeoutTick;
   bool     isTakeOffState = false;
@@ -110,8 +109,7 @@ monitoredTakeOff()
   timeoutTick += CONTROL_TIMEOUT;
   do
   {
-    //! Two seconds delay
-    delay_nms(2000);
+    delay_nms(RETRY_TICK);
 
     if (v->getFwVersion() != Version::M100_31)
     {
@@ -168,8 +166,7 @@ monitoredTakeOff()
   timeoutTick += CONTROL_TIMEOUT;
   do
   {
-    //! Two seconds delay
-    delay_nms(500);
+    delay_nms(RETRY_TICK);
 
     if (v->getFwVersion() != Version::M100_31)
     {
@@ -312,7 +309,6 @@ monitoredTakeOff()
 bool
 monitoredLanding()
 {
-  //@todo: remove this once the getErrorCode function signature changes
   char           func[50];
   ACK::ErrorCode ack;
   uint32_t       SUBSCRIBE_TIMOUT = 30000; // milliseconds
@@ -511,7 +507,6 @@ moveByPositionOffset(float xOffsetDesired, float yOffsetDesired,
   int outOfControlBoundsTimeLimit  = 10 * cycleTimeInMs; // 10 cycles
   int withinControlBoundsTimeReqmt = 50 * cycleTimeInMs; // 50 cycles
 
-  //@todo: remove this once the getErrorCode function signature changes
   char           func[50];
   ACK::ErrorCode ack;
 
@@ -550,7 +545,7 @@ moveByPositionOffset(float xOffsetDesired, float yOffsetDesired,
     startGlobalPositionBroadcast(v);
 
     // Wait for data to come in
-    delay_nms(8000);
+    delay_nms(1000);
   }
 
   // Get data
@@ -689,23 +684,23 @@ moveByPositionOffset(float xOffsetDesired, float yOffsetDesired,
     zOffsetRemaining = zOffsetDesired - localOffset.z;
 
     //! See if we need to modify the setpoint
-    if (std::abs(xOffsetRemaining) < speedFactor)
+    if (abs(xOffsetRemaining) < speedFactor)
       xCmd = xOffsetRemaining;
-    if (std::abs(yOffsetRemaining) < speedFactor)
+    if (abs(yOffsetRemaining) < speedFactor)
       yCmd = yOffsetRemaining;
 
     if(v->getFwVersion() == Version::M100_31 &&
-       std::abs(xOffsetRemaining) < posThresholdInM &&
-       std::abs(yOffsetRemaining) < posThresholdInM &&
-       std::abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
+       abs(xOffsetRemaining) < posThresholdInM &&
+       abs(yOffsetRemaining) < posThresholdInM &&
+       abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
     {
       //! 1. We are within bounds; start incrementing our in-bound counter
       withinBoundsCounter += cycleTimeInMs;
     }
-    else if(std::abs(xOffsetRemaining) < posThresholdInM &&
-	   std::abs(yOffsetRemaining) < posThresholdInM &&
-	   std::abs(zOffsetRemaining) < posThresholdInM &&
-	   std::abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
+    else if(abs(xOffsetRemaining) < posThresholdInM &&
+	   abs(yOffsetRemaining) < posThresholdInM &&
+	   abs(zOffsetRemaining) < posThresholdInM &&
+	   abs(yawInRad - yawDesiredRad) < yawThresholdInRad)
     {
       //! 1. We are within bounds; start incrementing our in-bound counter
       withinBoundsCounter += cycleTimeInMs;
@@ -759,7 +754,7 @@ moveByPositionOffset(float xOffsetDesired, float yOffsetDesired,
   if (v->getFwVersion() != Version::M100_31)
   {
     v->subscribe->removePackage(pkgIndex);
-    delay_nms(3000);
+    delay_nms(1000);
   }
   return ACK::SUCCESS;
 }

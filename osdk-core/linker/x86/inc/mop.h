@@ -37,12 +37,18 @@ typedef void * mop_channel_handle_t;
 #define MOP_WAIT_FOREVER        (uint32_t)(-1)
 #define MOP_WAIT_POLLING        (uint32_t)(0)
 
+#define ONCE_READ_WRITE_SIZE (64 * 1024 * 1024)
 typedef enum {
     MOP_DEVICE_ROUTER = 0,
     MOP_DEVICE_MSDK,
     MOP_DEVICE_PSDK,
     MOP_DEVICE_OSDK
 }mop_device_t;
+
+typedef enum {
+    MOP_CHANNEL_STATUS_CONNECTED,
+    MOP_CHANNEL_STATUS_DISCONNECTED,
+}mop_channel_status_t;
 
 typedef enum {
     MOP_TRANS_RELIABLE,
@@ -74,6 +80,10 @@ int32_t mop_close_channel(mop_channel_handle_t chl_handle);
 
 int32_t mop_set_channel_opt(mop_channel_handle_t chl_handle);
 int32_t mop_add_multicast(mop_device_t device);
+int32_t mop_get_channel_status(mop_channel_handle_t chl_handle,
+                               mop_channel_status_t *chl_status);
+
+int32_t mop_get_bandwidth(uint32_t *total_available_bandwidth_kps);
 
 #ifdef __cplusplus
 }

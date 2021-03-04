@@ -1,5 +1,5 @@
 /** @file dji_error.hpp
- *  @version 3.3
+ *  @version 4.0.0
  *  @date April 2017
  *
  *  @brief All DJI OSDK OpenProtocol ACK Error Codes
@@ -94,15 +94,15 @@ class ErrorCode {
   /*! @brief Function ID used with FCModule in error codes
    */
   enum FCFunctionID {
-    FCControlTask       = 0,
-    FCSubscribe         = 1,
-   // FCWaypointMissionV1 = 2,
-   // FCWaypointMissionV2 = 3,
-    FCParameterTable    = 4,
-    FCSetHomeLocation   = 5,
-    FCAvoidObstacle     = 6,
-    FCEmergencyBrake    = 7,
-  //  FCHotpointMission   = 8,
+    FCControlTask           = 0,
+    FCSubscribe             = 1,
+   // FCWaypointMissionV1   = 2,
+   // FCWaypointMissionV2   = 3,
+    FCParameterTable        = 4,
+    FCSetHomeLocation       = 5,
+    FCAvoidObstacle         = 6,
+    FCEmergencyBrake        = 7,
+  //  FCHotpointMission     = 8,
   };
 
   /*! @brief Function ID used with CameraModule in error codes
@@ -241,6 +241,15 @@ class ErrorCode {
     {
     public:
       static const ErrorCodeType Fail;
+    };
+
+    class SetControlParam
+    {
+      public:
+      static const ErrorCodeType ObtainJoystickCtrlAuthoritySuccess;
+      static const ErrorCodeType ReleaseJoystickCtrlAuthoritySuccess;
+      static const ErrorCodeType ObtainJoystickCtrlAuthorityFail;
+      static const ErrorCodeType ReleaseJoystickCtrlAuthorityFail;
     };
 
   };

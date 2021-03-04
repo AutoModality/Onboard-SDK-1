@@ -32,7 +32,12 @@ FILE(GLOB SOURCE_FILES *.hpp *.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../osal/*.c
         ${LINKER_HEADER_SRC}
         )
-add_subdirectory(stereo_vision_M300_sample)
+
+if (OSDK_HOTPLUG)
+  FILE(GLOB SOURCE_FILES ${SOURCE_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/../hal/hotplug/*.c)
+endif ()
+
+add_subdirectory(stereo_vision_new_sample)
 add_subdirectory(stereo_vision_single_thread_sample)
 add_subdirectory(stereo_vision_multi_thread_sample)
 add_subdirectory(camera_stream_poll_sample)

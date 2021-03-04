@@ -1,5 +1,5 @@
 /** @file dji_payload_manager.cpp
- *  @version 3.9
+ *  @version 4.0.0
  *  @date July 2019
  *
  *  @brief Implementation of the manager for payload nodes
@@ -32,25 +32,141 @@
 using namespace DJI;
 using namespace DJI::OSDK;
 
-#define OSDK_COMMAND_DEVICE_TYPE_CAMERA 1
 CameraManager::CameraManager(Vehicle* vehiclePtr) {
   /* fileMgr test for main camera only */
 #if defined(__linux__)
-  fileMgr = new FileMgr(vehiclePtr->linker, OSDK_COMMAND_DEVICE_TYPE_CAMERA, 0);
+  fileMgr = new FileMgr(vehiclePtr->linker);
 #endif
   for (int index = PAYLOAD_INDEX_0; index < PAYLOAD_INDEX_CNT; index++) {
     CameraModule* module = new CameraModule(
         vehiclePtr->linker, (PayloadIndexType)index, defaultCameraName, false);
     cameraModuleVector.push_back(module);
   }
+  m300LensCbInit(vehiclePtr->linker);
+  linker = vehiclePtr->linker;
+}
+
+E_OsdkStat getCameraLensPushing(struct _CommandHandle *cmdHandle,
+                              const T_CmdInfo *cmdInfo,
+                              const uint8_t *cmdData,
+                              void *userData) {
+  if (cmdInfo && userData) {
+    /*DSTATUS("test lens pushing : 0x80 puhsing sender=0x%02X receiver:0x%02X len=%d", cmdInfo->sender,
+             cmdInfo->receiver, cmdInfo->dataLen);*/
+    auto modules = *(std::vector<CameraModule *> *)userData;
+    uint8_t modId = 0xFF;
+    switch (cmdInfo->sender) {
+      case 0x01:
+        modId = 0;
+        break;
+      case 0x41:
+        modId = 1;
+        break;
+      case 0x81:
+        modId = 2;
+        break;
+      default:
+        return OSDK_STAT_SYS_ERR;
+    }
+    if (modules.size() >= (modId + 1)) {
+      CameraModule::dji_camera_len_para_push data = {0};
+      memcpy(&data, cmdData, cmdInfo->dataLen);
+      if (modules[modId])
+        modules[modId]->updateLensInfo(data);
+    }
+  } else {
+    DERROR("cmdInfo is a null value");
+    return OSDK_STAT_SYS_ERR;
+  }
+  return OSDK_STAT_OK;
+}
+
+#include "dji_linker.hpp"
+void CameraManager::m300LensCbInit(Linker *linker) {
+  static T_RecvCmdHandle handle = {0};
+  static T_RecvCmdItem item = {0};
+
+  handle.protoType = PROTOCOL_V1;
+  handle.cmdCount = 1;
+  handle.cmdList = &item;
+  item.cmdSet = 0x02;
+  item.cmdId = 0x87;
+  item.mask = MASK_HOST_XXXXXX_SET_ID;
+  item.host = 0;
+  item.device = 0;
+  item.pFunc = getCameraLensPushing;
+  item.userData = (void *)(&cameraModuleVector);
+
+  bool registerRet = linker->registerCmdHandler(&(handle));
+  //DSTATUS("...... register result of geting camera pushing : %d\n", registerRet);
+
+  uint8_t reqStartData[] = {0x01, 0x00, 0x02, 0x87};
+  T_CmdInfo cmdInfo = {0};
+  T_CmdInfo ackInfo = {0};
+  uint8_t ackData[1024];
+
+  cmdInfo.cmdSet = 0x05;
+  cmdInfo.cmdId = 0x0b;
+  cmdInfo.dataLen = sizeof(reqStartData);
+  cmdInfo.needAck = OSDK_COMMAND_NEED_ACK_FINISH_ACK;
+  cmdInfo.packetType = OSDK_COMMAND_PACKET_TYPE_REQUEST;
+  cmdInfo.addr = GEN_ADDR(0, ADDR_V1_COMMAND_INDEX);
+  cmdInfo.receiver =
+      OSDK_COMMAND_DEVICE_ID(OSDK_COMMAND_DEVICE_TYPE_CENTER, 0);
+  cmdInfo.sender = linker->getLocalSenderId();
+  E_OsdkStat linkAck =
+      linker->sendSync(&cmdInfo, (uint8_t *) reqStartData, &ackInfo, ackData,
+                                1000 / 4, 4);
+  //DSTATUS("Request start pushing lens info ack = %d\n", linkAck);
+}
+
+void CameraManager::m300LensCbDeinit(Linker *linker) {
+  uint8_t reqStartData[] = {0x00, 0x00, 0x02, 0x87};
+  T_CmdInfo cmdInfo = {0};
+  T_CmdInfo ackInfo = {0};
+  uint8_t ackData[1024];
+
+  cmdInfo.cmdSet = 0x05;
+  cmdInfo.cmdId = 0x0b;
+  cmdInfo.dataLen = sizeof(reqStartData);
+  cmdInfo.needAck = OSDK_COMMAND_NEED_ACK_FINISH_ACK;
+  cmdInfo.packetType = OSDK_COMMAND_PACKET_TYPE_REQUEST;
+  cmdInfo.addr = GEN_ADDR(0, ADDR_V1_COMMAND_INDEX);
+  cmdInfo.receiver =
+      OSDK_COMMAND_DEVICE_ID(OSDK_COMMAND_DEVICE_TYPE_CENTER, 0);
+  cmdInfo.sender = linker->getLocalSenderId();
+  E_OsdkStat linkAck =
+      linker->sendSync(&cmdInfo, (uint8_t *) reqStartData, &ackInfo, ackData,
+                       1000 / 4, 4);
+  //DSTATUS("Request start pushing lens info ack = %d\n", linkAck);
+  OsdkOsal_TaskSleepMs(100);
+
+  static T_RecvCmdHandle handle = {0};
+  static T_RecvCmdItem item = {0};
+
+  handle.protoType = PROTOCOL_V1;
+  handle.cmdCount = 1;
+  handle.cmdList = &item;
+  item.cmdSet = 0x02;
+  item.cmdId = 0x87;
+  item.mask = MASK_HOST_XXXXXX_SET_ID;
+  item.host = 0;
+  item.device = 0;
+  item.pFunc = NULL;
+  item.userData = NULL;
+
+  bool registerRet = linker->registerCmdHandler(&(handle));
+  //DSTATUS("...... register result of geting camera pushing : %d\n", registerRet);
 }
 
 CameraManager::~CameraManager() {
+  m300LensCbDeinit(linker);
   for (int i = 0; i < cameraModuleVector.size(); i++) {
     if (cameraModuleVector[i]) {
       delete cameraModuleVector[i];
     }
   }
+  cameraModuleVector.clear();
 #if defined(__linux__)
   delete fileMgr;
 #endif
@@ -138,6 +254,24 @@ ErrorCode::ErrorCodeType CameraManager::getCameraModuleEnable(
     return ErrorCode::SysCommonErr::Success;
   } else {
     return ErrorCode::SysCommonErr::AllocMemoryFailed;
+  }
+}
+
+std::string CameraManager::getCameraVersion(PayloadIndexType index) {
+  CameraModule* cameraMgr = getCameraModule(index);
+  if (cameraMgr) {
+    return cameraMgr->getCameraVersion();
+  } else {
+    return "UNKNOWN";
+  }
+}
+
+std::string CameraManager::getFirmwareVersion(PayloadIndexType index) {
+  CameraModule* cameraMgr = getCameraModule(index);
+  if (cameraMgr) {
+    return cameraMgr->getFirmwareVersion();
+  } else {
+    return "UNKNOWN";
   }
 }
 
@@ -673,7 +807,21 @@ ErrorCode::ErrorCodeType CameraManager::setOpticalZoomFactorSync(PayloadIndexTyp
 ErrorCode::ErrorCodeType CameraManager::getOpticalZoomFactorSync(PayloadIndexType index, float &factor, int timeout) {
   CameraModule* cameraMgr = getCameraModule(index);
   if (cameraMgr) {
-    return cameraMgr->getOpticalZoomFactorSync(factor, timeout);
+    auto lensInfo = cameraMgr->getLensInfo();
+    uint32_t curMs = 0;
+    OsdkOsal_GetTimeMs(&curMs);
+    /* Valid : data updated in 500 ms */
+    if ((lensInfo.updateTimeStamp <= curMs) && (lensInfo.updateTimeStamp >= curMs - 500)) {
+      DSTATUS("Get lens data from pushing data.");
+      if (cameraMgr)
+      factor = 1.0f * lensInfo.data.current_focus_length
+          / lensInfo.data.min_focus_length;
+      DSTATUS("Getting zoom factor from lens info.");
+      return ErrorCode::SysCommonErr::Success;
+    } else {
+      DSTATUS("Get lens data from cmd request.");
+      return cameraMgr->getOpticalZoomFactorSync(factor, timeout);
+    }
   } else {
     return ErrorCode::SysCommonErr::AllocMemoryFailed;
   }
@@ -1034,21 +1182,19 @@ ErrorCode::ErrorCodeType CameraManager::obtainDownloadRightSync(
   }
 }
 #if defined(__linux__)
-ErrorCode::ErrorCodeType CameraManager::startReqFileList(FileMgr::FileListReqCBType cb, void *userData) {
+#define PAYLOAD_INDEX_TO_DEVICE_ID(id) (id * 2)
+ErrorCode::ErrorCodeType CameraManager::startReqFileList(PayloadIndexType index, FileMgr::FileListReqCBType cb, void *userData) {
   ErrorCode::ErrorCodeType ret;
-  ret = fileMgr->startReqFileList(cb, userData);
-  //OsdkOsal_TaskSleepMs(1000);
-  //fileMgr->SendAbortPack(DJI_GENERAL_DOWNLOAD_FILE_TASK_TYPE_LIST);
-  //fileMgr->SendACKPack(DJI_GENERAL_DOWNLOAD_FILE_TASK_TYPE_LIST);
+  ret = fileMgr->startReqFileList(OSDK_COMMAND_DEVICE_TYPE_CAMERA,
+                                  PAYLOAD_INDEX_TO_DEVICE_ID(index), cb, userData);
   return ret;
 }
 
-ErrorCode::ErrorCodeType CameraManager::startReqFileData(int fileIndex, std::string localPath, FileMgr::FileDataReqCBType cb, void *userData) {
+ErrorCode::ErrorCodeType CameraManager::startReqFileData(PayloadIndexType index, int fileIndex, std::string localPath, FileMgr::FileDataReqCBType cb, void *userData) {
   ErrorCode::ErrorCodeType ret;
-  ret = fileMgr->startReqFileData(fileIndex, localPath, cb, userData);
-  //OsdkOsal_TaskSleepMs(1000);
-  //fileMgr->SendAbortPack(DJI_GENERAL_DOWNLOAD_FILE_TASK_TYPE_LIST);
-  //fileMgr->SendACKPack(DJI_GENERAL_DOWNLOAD_FILE_TASK_TYPE_LIST);
+  ret = fileMgr->startReqFileData(OSDK_COMMAND_DEVICE_TYPE_CAMERA,
+                                  PAYLOAD_INDEX_TO_DEVICE_ID(index),
+                                  fileIndex, localPath, cb, userData);
   return ret;
 }
 #endif

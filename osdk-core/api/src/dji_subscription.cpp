@@ -1,5 +1,5 @@
 /** @file dji_subscription.cpp
- *  @version 3.3
+ *  @version 4.0.0
  *  @date April 2017
  *
  *  @brief
@@ -32,7 +32,7 @@
 
 using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
-const uint8_t  ADD_PACKAEG_DATA_LENGTH = 250;
+const uint8_t  ADD_PACKAGE_DATA_LENGTH = 250;
 const uint32_t DBVersion               = 0x00000100;
 //
 // @note: make sure the order of entry is the same as in the enum TopicName
@@ -52,17 +52,17 @@ TopicInfo Telemetry::TopicDataBase[] =
   {TOPIC_ALTITUDE_BAROMETER        , UID_ALTITUDE_BAROMETER       , sizeof(TypeMap<TOPIC_ALTITUDE_BAROMETER      >::type), 200,   0,  255,  0},
   {TOPIC_ALTITUDE_OF_HOMEPOINT     , UID_ALTITUDE_OF_HOMEPOINT    , sizeof(TypeMap<TOPIC_ALTITUDE_OF_HOMEPOINT   >::type), 1  ,   0,  255,  0},
   {TOPIC_HEIGHT_FUSION             , UID_HEIGHT_FUSION            , sizeof(TypeMap<TOPIC_HEIGHT_FUSION           >::type), 100,   0,  255,  0},
-  {TOPIC_GPS_FUSED                 , UID_GPS_FUSED                , sizeof(TypeMap<TOPIC_GPS_FUSED               >::type), 50 ,   0,  255,  0}, //todo: check frequency
-  {TOPIC_GPS_DATE                  , UID_GPS_DATE                 , sizeof(TypeMap<TOPIC_GPS_DATE                >::type), 5  ,   0,  255,  0}, //todo: check frequency
-  {TOPIC_GPS_TIME                  , UID_GPS_TIME                 , sizeof(TypeMap<TOPIC_GPS_TIME                >::type), 5  ,   0,  255,  0}, //todo: check frequency
-  {TOPIC_GPS_POSITION              , UID_GPS_POSITION             , sizeof(TypeMap<TOPIC_GPS_POSITION            >::type), 5  ,   0,  255,  0}, //todo: check frequency
-  {TOPIC_GPS_VELOCITY              , UID_GPS_VELOCITY             , sizeof(TypeMap<TOPIC_GPS_VELOCITY            >::type), 5  ,   0,  255,  0}, //todo: check frequency
-  {TOPIC_GPS_DETAILS               , UID_GPS_DETAILS              , sizeof(TypeMap<TOPIC_GPS_DETAILS             >::type), 5  ,   0,  255,  0}, //todo: check frequency
-  {TOPIC_RTK_POSITION              , UID_RTK_POSITION             , sizeof(TypeMap<TOPIC_RTK_POSITION            >::type), 5  ,   0,  255,  0}, //todo: check frequency
-  {TOPIC_RTK_VELOCITY              , UID_RTK_VELOCITY             , sizeof(TypeMap<TOPIC_RTK_VELOCITY            >::type), 5  ,   0,  255,  0}, //todo: check frequency
-  {TOPIC_RTK_YAW                   , UID_RTK_YAW                  , sizeof(TypeMap<TOPIC_RTK_YAW                 >::type), 5  ,   0,  255,  0}, //todo: check frequency
-  {TOPIC_RTK_POSITION_INFO         , UID_RTK_POSITION_INFO        , sizeof(TypeMap<TOPIC_RTK_POSITION_INFO       >::type), 5  ,   0,  255,  0}, //todo: check frequency
-  {TOPIC_RTK_YAW_INFO              , UID_RTK_YAW_INFO             , sizeof(TypeMap<TOPIC_RTK_YAW_INFO            >::type), 5  ,   0,  255,  0}, //todo: check frequency
+  {TOPIC_GPS_FUSED                 , UID_GPS_FUSED                , sizeof(TypeMap<TOPIC_GPS_FUSED               >::type), 50 ,   0,  255,  0},
+  {TOPIC_GPS_DATE                  , UID_GPS_DATE                 , sizeof(TypeMap<TOPIC_GPS_DATE                >::type), 5  ,   0,  255,  0},
+  {TOPIC_GPS_TIME                  , UID_GPS_TIME                 , sizeof(TypeMap<TOPIC_GPS_TIME                >::type), 5  ,   0,  255,  0},
+  {TOPIC_GPS_POSITION              , UID_GPS_POSITION             , sizeof(TypeMap<TOPIC_GPS_POSITION            >::type), 5  ,   0,  255,  0},
+  {TOPIC_GPS_VELOCITY              , UID_GPS_VELOCITY             , sizeof(TypeMap<TOPIC_GPS_VELOCITY            >::type), 5  ,   0,  255,  0},
+  {TOPIC_GPS_DETAILS               , UID_GPS_DETAILS              , sizeof(TypeMap<TOPIC_GPS_DETAILS             >::type), 5  ,   0,  255,  0},
+  {TOPIC_RTK_POSITION              , UID_RTK_POSITION             , sizeof(TypeMap<TOPIC_RTK_POSITION            >::type), 5  ,   0,  255,  0},
+  {TOPIC_RTK_VELOCITY              , UID_RTK_VELOCITY             , sizeof(TypeMap<TOPIC_RTK_VELOCITY            >::type), 5  ,   0,  255,  0},
+  {TOPIC_RTK_YAW                   , UID_RTK_YAW                  , sizeof(TypeMap<TOPIC_RTK_YAW                 >::type), 5  ,   0,  255,  0},
+  {TOPIC_RTK_POSITION_INFO         , UID_RTK_POSITION_INFO        , sizeof(TypeMap<TOPIC_RTK_POSITION_INFO       >::type), 5  ,   0,  255,  0},
+  {TOPIC_RTK_YAW_INFO              , UID_RTK_YAW_INFO             , sizeof(TypeMap<TOPIC_RTK_YAW_INFO            >::type), 5  ,   0,  255,  0},
   {TOPIC_COMPASS                   , UID_COMPASS                  , sizeof(TypeMap<TOPIC_COMPASS                 >::type), 100,   0,  255,  0},
   {TOPIC_RC                        , UID_RC                       , sizeof(TypeMap<TOPIC_RC                      >::type), 50 ,   0,  255,  0},
   {TOPIC_GIMBAL_ANGLES             , UID_GIMBAL_ANGLES            , sizeof(TypeMap<TOPIC_GIMBAL_ANGLES           >::type), 50 ,   0,  255,  0},
@@ -267,7 +267,7 @@ DataSubscription::startPackage(int packageID)
     return;
   }
 
-  uint8_t buffer[ADD_PACKAEG_DATA_LENGTH];
+  uint8_t buffer[ADD_PACKAGE_DATA_LENGTH];
 
   int bufferLength = package[packageID].serializePackageInfo(buffer);
   package[packageID].allocateDataBuffer();
@@ -333,7 +333,7 @@ DataSubscription::startPackage(int packageID, int timeout)
     return ack;
   }
 
-  uint8_t buffer[ADD_PACKAEG_DATA_LENGTH];
+  uint8_t buffer[ADD_PACKAGE_DATA_LENGTH];
 
   int bufferLength = package[packageID].serializePackageInfo(buffer);
   package[packageID].allocateDataBuffer();
@@ -500,7 +500,7 @@ void DataSubscription::removeAllExistingPackages()
     if(package[packageID].hasLeftOverData() || package[packageID].isOccupied())
     {
       ack = removePackage(packageID, 1);
-      if(!ACK::getError(ack))
+      if(ACK::FAIL == ACK::getError(ack))
       {
         DERROR("failed to remove package %d", packageID);
       }
@@ -646,7 +646,7 @@ SubscriptionPackage::setTopicList(TopicName* topics, int numberOfTopics,
       return false;
     }
     totalSize += TopicDataBase[topics[i]].size;
-    if (totalSize > ADD_PACKAEG_DATA_LENGTH)
+    if (totalSize > ADD_PACKAGE_DATA_LENGTH)
     {
       DERROR(
         "Too many topics, data payload of the first %d topic is already %d", i,

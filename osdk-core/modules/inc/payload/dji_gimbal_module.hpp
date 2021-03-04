@@ -1,5 +1,5 @@
 /** @file dji_gimbal_module.hpp
- *  @version 4.0
+ *  @version 4.0.0
  *  @date November 2019
  *
  *  @brief Implementation of gimbal module for payload node
@@ -70,8 +70,8 @@ class GimbalModule : public PayloadBase {
 
   typedef struct Rotation {
     /*! rotation cooradiration
-     *  0 = execute angle command based on the previously set reference point
-     *  1 = execute angle command based on the current point
+     *  0 = execute angle command based on ground frame as the horizontal frame (NEU)
+     *  1 = execute angle command based on current gimbal angle
      */
     uint8_t rotationMode;
     /*! pitch angle in degree, unit : deg

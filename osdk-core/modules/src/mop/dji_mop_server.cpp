@@ -1,5 +1,5 @@
 /** @file dji_mop_server.cpp
- *  @version 4.0
+ *  @version 4.0.0
  *  @date March 2020
  *
  *  @brief Implementation of the mop client
@@ -29,6 +29,8 @@
 #include "dji_mop_server.hpp"
 #include "mop.h"
 
+#define ACCEPT_RETRY_TIMES 3
+
 using namespace std;
 
 MopServer::MopServer() : MopPipelineManagerBase() {
@@ -40,6 +42,9 @@ MopServer::~MopServer() {
 MopErrCode MopServer::accept(PipelineID id, PipelineType type, MopPipeline *&p) {
   int32_t ret;
   mop_channel_handle_t bind_handle;
+
+  /*! Check the entry env */
+  checkEntry();
 
   /*! 0.Find whether the pipeline object is existed or not */
   DSTATUS("/*! 0.Find whether the pipeline object is existed or not */");
@@ -71,7 +76,15 @@ MopErrCode MopServer::accept(PipelineID id, PipelineType type, MopPipeline *&p) 
   }
   DSTATUS("/*! 3.Do accepting */");
   DSTATUS("Do accepting blocking for channel [%d] ...", id);
-  ret = mop_accept_channel(bind_handle, &p->channelHandle);
+  for (int retry = 0; retry < ACCEPT_RETRY_TIMES; retry++) {
+    ret = mop_accept_channel(bind_handle, &p->channelHandle);
+    if (ret == MOP_SUCCESS) break;
+    else {
+      DSTATUS("Trying to accept pipeline id [%d] failed, ret [%d] (%d/%d)",
+              id, ret, retry, ACCEPT_RETRY_TIMES);
+      sleep(1);
+    }
+  }
   if (MOP_SUCCESS != ret) {
     DERROR("MOP accept failed");
     return getMopErrCode(ret);
@@ -89,11 +102,23 @@ MopErrCode MopServer::close(PipelineID id) {
   if (pipelineMap.find(id) == pipelineMap.end()) {
     return MOP_PARM;
   }
-  mop_channel_handle_t handler = pipelineMap[id];
+
+  MopPipeline *pipeline = pipelineMap[id];
+  if (!pipeline)
+    return MOP_UNKNOWN_ERR;
+
+  /*! Check the entry env */
+  checkEntry();
+
+  mop_channel_handle_t handler = pipeline->channelHandle;
 
   DSTATUS("Trying to close pipeline channel_id : %d", id);
   ret = mop_close_channel(handler);
   DSTATUS("Result of close pipeline channel_id:%d : %d", id, ret);
+  ret = mop_destroy_channel(handler);
+  DSTATUS("Result of destroy pipeline channel_id:%d : %d", id, ret);
+  delete pipeline;
 
+  pipelineMap.erase(id);
   return getMopErrCode(ret);
 }

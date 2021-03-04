@@ -1,5 +1,5 @@
 /** @file dji_hms.hpp
- *  @version 4.0
+ *  @version 4.0.0
  *  @date Dec 2019
  *
  *  @brief
@@ -125,7 +125,7 @@ void HMSSample::printAllError(void)
 {
     HMSPushPacket hmsPushPacket = vehicle->djiHms->getHMSPushPacket();
     uint8_t deviceIndex = vehicle->djiHms->getDeviceIndex();
-    DSTATUS("TimeStamp: %ld, msgversion: %d, globalIndex: %d, msgEnd: %d, msgIndex: %d",
+    DSTATUS("TimeStamp: %u, msgversion: %d, globalIndex: %d, msgEnd: %d, msgIndex: %d",
             hmsPushPacket.timeStamp,
             hmsPushPacket.hmsPushData.msgVersion,
             hmsPushPacket.hmsPushData.globalIndex,

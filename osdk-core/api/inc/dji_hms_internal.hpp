@@ -1,5 +1,5 @@
 /** @file dji_hms_internal.hpp
- *  @version 4.0
+ *  @version 4.0.0
  *  @date Dec 2019
  *
  *  @brief HMS((Health Management System) error code table and some basic func for HMS API
@@ -43,7 +43,7 @@ typedef struct HMSErrCodeInfo {
 } HMSErrCodeInfo;
 
 /*! the length of HMS's error code table*/
-const uint32_t dbHMSErrNum = 600;
+const uint32_t dbHMSErrNum = 700;
 
 extern void encodeSender(const uint8_t sender,uint8_t & deviceType, uint8_t & deviceIndex);
 extern bool replaceStr(string &str, const string oldReplaceStr, const string newReplaceStr);

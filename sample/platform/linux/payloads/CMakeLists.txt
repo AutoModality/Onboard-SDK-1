@@ -34,6 +34,10 @@ FILE(GLOB SOURCE_FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/../osal/*.c
         )
 
+if (OSDK_HOTPLUG)
+    FILE(GLOB SOURCE_FILES ${SOURCE_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/../hal/hotplug/*.c)
+endif ()
+
 add_executable(payloads_sync_sample
         main_sync.cpp
         ${SOURCE_FILES})
@@ -43,3 +47,6 @@ add_executable(payloads_async_sample
         main_async.cpp
         ${SOURCE_FILES})
 
+add_executable(payloads_download_sample
+        download_sample.cpp
+        ${SOURCE_FILES})
