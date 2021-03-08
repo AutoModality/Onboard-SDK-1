@@ -252,12 +252,12 @@ typedef struct M300VGAHandlerData {
 void M300VGAHandleCB(Perception::ImageInfoType info, uint8_t *imageRawBuffer,
                        int bufferLen, void *userData) {
   static DJI::OSDK::ACK::StereoVGAImgData stereoVGAImg = {0};
-  DSTATUS("image info : dataId(%d) seq(%d) timestamp(%d) datatype(%d)",
+  /*DSTATUS("image info : dataId(%d) seq(%d) timestamp(%d) datatype(%d)",
           info.dataId, info.sequence,
-          info.timeStamp, info.dataType);
-  DSTATUS("image info : index(%d) h(%d) w(%d) dir(%d) bpp(%d) bufferlen(%d)",
+          info.timeStamp, info.dataType);*/
+  /*DSTATUS("image info : index(%d) h(%d) w(%d) dir(%d) bpp(%d) bufferlen(%d)",
           info.rawInfo.index, info.rawInfo.height, info.rawInfo.width,
-          info.rawInfo.direction, info.rawInfo.bpp, bufferLen);
+          info.rawInfo.direction, info.rawInfo.bpp, bufferLen);*/
   if (bufferLen != 480 * 640) {
     DERROR("Error image raw data len : %d, should be 480 * 640.", bufferLen);
     return;
@@ -275,7 +275,7 @@ void M300VGAHandleCB(Perception::ImageInfoType info, uint8_t *imageRawBuffer,
   switch (stereoVGAImg.num_imgs) {
     case 0 :
       /*! get the first VGA image */
-      DSTATUS("#### ( 1 ) get the first VGA image");
+      //DSTATUS("#### ( 1 ) get the first VGA image");
       stereoVGAImg.direction = info.rawInfo.direction;
       stereoVGAImg.frame_index = info.rawInfo.index;
       stereoVGAImg.time_stamp = info.timeStamp;
@@ -287,7 +287,7 @@ void M300VGAHandleCB(Perception::ImageInfoType info, uint8_t *imageRawBuffer,
       if ((stereoVGAImg.direction == info.rawInfo.direction) &&
           (stereoVGAImg.frame_index == info.rawInfo.index) &&
           (stereoVGAImg.time_stamp == info.timeStamp)) {
-        DSTATUS("#### ( 2 ) get the second VGA image");
+        //DSTATUS("#### ( 2 ) get the second VGA image");
         memcpy(stereoVGAImg.img_vec[1], imageRawBuffer, 480 * 640);
         RecvContainer recvFrame = {0};
         recvFrame.recvData.stereoVGAImgData = &stereoVGAImg;
@@ -296,7 +296,7 @@ void M300VGAHandleCB(Perception::ImageInfoType info, uint8_t *imageRawBuffer,
         stereoVGAImg.num_imgs = 0;
       } else {
         /*! replace the first VGA image */
-        DSTATUS("#### (1.5) replace the first VGA image");
+        //DSTATUS("#### (1.5) replace the first VGA image");
         stereoVGAImg.direction = info.rawInfo.direction;
         stereoVGAImg.frame_index = info.rawInfo.index;
         stereoVGAImg.time_stamp = info.timeStamp;
