@@ -1,8 +1,10 @@
-3# Packaging Onboard-SDK-4.0
+# Packaging Onboard-SDK-4.0
 
 * The goal is to make as few custom changes to this repository as possible. 
 * Consider making custom changes to one of our repos that extends this library.
 * We forked this repository so we could provide debian binary packages for easy and consistent distributions.
+
+Updating from DJI's origin is encouraged.  Branch from our master, then pull from their tag that you wish to merge.
 
 Changes are currently found under two directories introduced by AM:
 
