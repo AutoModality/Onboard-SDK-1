@@ -18,7 +18,7 @@ jobs:
         id: package
         uses: AutoModality/action-package-debian-ros@v5-amros
         with:
-          version: 4.0.0-AM${{ github.run_number }}
+          version: 4.0.1-AM${{ github.run_number }}
       - name: Deploy
         id: deploy
         uses: AutoModality/action-cloudsmith@0.2.0
