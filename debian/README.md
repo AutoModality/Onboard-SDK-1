@@ -1,8 +1,10 @@
-3# Packaging Onboard-SDK-4.0
+# Packaging Onboard-SDK-4.0
 
 * The goal is to make as few custom changes to this repository as possible. 
 * Consider making custom changes to one of our repos that extends this library.
 * We forked this repository so we could provide debian binary packages for easy and consistent distributions.
+
+Updating from DJI's origin is encouraged.  Branch from our master, then pull from their tag that you wish to merge.
 
 Changes are currently found under two directories introduced by AM:
 
@@ -25,13 +27,16 @@ Let's keep it that way.
 
 ### ARM 64 Builder
 
-We provide self hosted runners to build our ARM binaries, however, this can cause a [security threat](https://help.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners#self-hosted-runner-security-with-public-repositories).  
+We provide self hosted runners to build our AMD and ARM binaries, however, this can cause a [security threat](https://help.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners#self-hosted-runner-security-with-public-repositories).  
 For this reason, we only bring up the self hosted runner manually when builds need to happen, which should be rare.  
 Organization action runners will not satisfy requirements since Github restricts such from the Org level, but allows at the repo level where we can apply granualar control. 
 
-1. `ssh nvidia@192.168.4.135`
-1. `/media/nvidia/build/actions-runners/Onboard-SDK-4.0/run.sh`
+1. `ssh resource@flops2` (password in Rpass)
+1. `/usr/lib/github/actions-runners/flops2-onboard-sdk-4.0/run.sh`
 1. You should see `√ Connected to GitHub` and `Listening for Jobs`
-1. You should see `arm-builder` available in the [repo's actions](https://github.com/AutoModality/Onboard-SDK-4.0/settings/actions)
+1. You should see `flops2` available in the [repo's actions](https://github.com/AutoModality/Onboard-SDK-4.0/settings/actions)
 1. Any queues actions should be processed.
 
+Repeat the steps above with `arm-builder-2`.
+
+See [Github Actions Wiki](https://automodality.atlassian.net/wiki/spaces/AMROS/pages/758382915/Continuous+Integration+with+Github+Actions#FLOPS-AMD-Builders) for more information about builders.
