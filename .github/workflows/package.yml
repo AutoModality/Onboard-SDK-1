@@ -8,7 +8,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, [arm64,self-hosted,linux, build]]
+        os: [[arm64,self-hosted,linux, build], [arm64,self-hosted,linux, build]]
       fail-fast: false
     steps:
       - uses: AutoModality/action-clean@v1.1.0
@@ -16,7 +16,7 @@ jobs:
       - uses: rlespinasse/github-slug-action@3.1.0 # for GITHUB_REF_SLUG
       - name: Package
         id: package
-        uses: AutoModality/action-package-debian-ros@v5-ros
+        uses: AutoModality/action-package-debian-ros@v5-amros
         with:
           branch: ${{ env.GITHUB_REF_SLUG }}
           build-number: ${{ github.run_number }}
