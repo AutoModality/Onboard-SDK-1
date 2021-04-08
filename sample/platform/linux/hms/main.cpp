@@ -59,6 +59,8 @@ int main(int argc, char** argv) {
     int pkgIndex = 0;
     if (!hmsSample->subscribeFlightStatus(pkgIndex))
     {
+        delete hmsSample;
+
         return -1;
     }
 
@@ -66,6 +68,8 @@ int main(int argc, char** argv) {
     if (!hmsSample->subscribeHMSInf(true, timeOutMs))
     {
         hmsSample->unsubscribeFlightStatus((pkgIndex));
+        delete hmsSample;
+
         return -1;
     }
 
@@ -77,7 +81,7 @@ int main(int argc, char** argv) {
     {
         OsdkLinux_TaskSleepMs(waitTimeMs);
         hmsSample->printAllError();
-        DSTATUS("now flight status is %d\n", hmsSample->getFlightStatus());
+        DSTATUS("now flight status is %d", hmsSample->getFlightStatus());
         timeSoFar += waitTimeMs;
     }
 

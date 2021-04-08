@@ -36,6 +36,8 @@
 using namespace DJI;
 using namespace DJI::OSDK;
 
+const float32_t INVALID_TAKOFF_ALTITUDE = 999999.99;
+
 
 ErrorCode::ErrorCodeType getWP2LinkerErrorCode(E_OsdkStat cb_type) {
   switch (cb_type) {
@@ -119,17 +121,18 @@ bool missionEncode(const std::vector<WaypointV2Internal> &mission, uint8_t *push
       elementEncode<RelativePosition>(wp.pointOfInterest, tempTotalLen,
                                             tempPtr);
     }
-    if (wp.config.useLocalCruiseVel == 1) {
-      elementEncode<uint16_t>(wp.autoFlightSpeed , tempTotalLen, tempPtr);
-    }
     if (wp.config.useLocalMaxVel == 1) {
       elementEncode<uint16_t>(wp.maxFlightSpeed, tempTotalLen, tempPtr);
+    }
+    if (wp.config.useLocalCruiseVel ==1) {
+      elementEncode<uint16_t>(wp.autoFlightSpeed, tempTotalLen, tempPtr);
     }
   }
   len = tempTotalLen;
   endIndex = i - 1;
   startIndex = endIndex + 1;
   memcpy(tempTempPtr, &endIndex, sizeof(endIndex));
+  DSTATUS("mis_upload_start_index:%d, mis_upload_end_index:%d, upload_len:%d",*pushPtr, *(pushPtr + 2), len);
   if (endIndex >= mission.size() - 1) {
     startIndex = 0;
     endIndex = 0;
@@ -172,11 +175,11 @@ bool missionDecode(std::vector<WaypointV2Internal> &mission, uint8_t *const pull
     if (wp.headingMode == DJIWaypointV2HeadingTowardPointOfInterest) {
       elementDecode<RelativePosition>(wp.pointOfInterest, tempPtr);
     }
-    if (wp.config.useLocalCruiseVel == 1) {
-      elementDecode<uint16_t>(wp.maxFlightSpeed, tempPtr);
-    }
     if (wp.config.useLocalMaxVel == 1) {
       elementDecode<uint16_t>(wp.maxFlightSpeed, tempPtr);
+    }
+    if (wp.config.useLocalCruiseVel == 1) {
+      elementDecode<uint16_t>(wp.autoFlightSpeed, tempPtr);
     }
     mission.push_back(wp);
   }
@@ -323,11 +326,6 @@ void triggerEncode(const DJIWaypointV2Trigger &trigger, uint16_t &tempTotalLen,
                    uint8_t *&tempPtr) {
   elementEncode<uint8_t >(trigger.actionTriggerType, tempTotalLen, *&tempPtr);
   switch (trigger.actionTriggerType) {
-    case DJIWaypointV2ActionTriggerTypeReachPoint:
-    {
-      elementEncode<DJIWaypointV2ReachPointTriggerParam>(trigger.reachPointTriggerParam, tempTotalLen, *&tempPtr);
-    }
-
     case DJIWaypointV2ActionTriggerTypeActionAssociated: {
       elementEncode<DJIWaypointV2AssociateTriggerParam>(trigger.associateTriggerParam, tempTotalLen, *&tempPtr);
       break;
@@ -373,9 +371,11 @@ bool ActionsEncode(std::vector<DJIWaypointV2Action> &actions,
     actuatorEncode(action.actuator, tempTotalLen, tempPtr);
 
     len = tempTotalLen;
+    DSTATUS("upload_action_ID:%d",action.actionId);
   }
+  DSTATUS("total_len:%d",len);
   startIndex = i;
-  if (startIndex >= actions.size() - 1) {
+  if (startIndex > actions.size() - 1) {
     finished = true;
     startIndex = 0;
   }
@@ -468,12 +468,13 @@ void WaypointV2MissionOperator::RegisterOSDInfoCallback(Vehicle *vehiclePtr) {
   item.pFunc = updateOSDbrodcast;
   item.userData = this;
   bool registerRet = vehiclePtr->linker->registerCmdHandler(&handle);
-  DSTATUS("register result of geting　FC ground station status pushing : %d\n",
-          registerRet);
+  /*DSTATUS("register result of geting　FC ground station status pushing : %d\n",
+          registerRet);*/
 }
 
 WaypointV2MissionOperator::WaypointV2MissionOperator(Vehicle *vehiclePtr) {
   this->vehiclePtr = vehiclePtr;
+  takeoffAltitude = INVALID_TAKOFF_ALTITUDE;
   currentState = DJIWaypointV2MissionStateUnWaypointActionActuatorknown;
   prevState = DJIWaypointV2MissionStateUnWaypointActionActuatorknown;
   RegisterOSDInfoCallback(vehiclePtr);
@@ -513,6 +514,11 @@ ErrorCode::ErrorCodeType WaypointV2MissionOperator::init(WayPointV2InitSettings 
     return ErrorCode::SysCommonErr::ReqNotSupported;
   }
   /*!Set reference altitude is takeoff altitude*/
+  if (this->getTakeoffAltitude() == INVALID_TAKOFF_ALTITUDE)
+  {
+  /*! waiting for takeoff altitude subscription*/
+    OsdkOsal_TaskSleepMs(1000);
+  }
   initSettingsInternal.refAlti = this->getTakeoffAltitude();
   //DSTATUS("initSettingsInternal.refAlti %f\n",initSettingsInternal.refAlti );
   T_CmdInfo cmdInfo =
@@ -586,6 +592,7 @@ ErrorCode::ErrorCodeType WaypointV2MissionOperator::uploadMission(
     }
     if (ackInfo.dataLen >= sizeof(RetCodeType)) {
       auto *ackCode = (UploadMissionRawAck *)ackData;
+      // DSTATUS("mis_upload_result:%d,mis_ack_start_index:%d, mis_ack_end_index:%d",ackCode->result,ackCode->startIndex,ackCode->endIndex);
       if (ackCode->result != 0)
         return ErrorCode::getErrorCode(ErrorCode::MissionV2Module,
                                        ErrorCode::MissionV2Common,
@@ -728,10 +735,9 @@ ErrorCode::ErrorCodeType WaypointV2MissionOperator::getActionRemainMemory(
 
   linkAck = vehiclePtr->linker->sendSync(&cmdInfo, (uint8_t *)&dataLen, &ackInfo, ackData,
                              timeout * 1000 / 4, 4);
-
-  auto *ack = (GetRemainRamAck *)ackData;
-  DSTATUS("Total memory is:%d\n", ack->totalMemory);
-  DSTATUS("Remain memory is:%d\n", ack->remainMemory);
+  memcpy(&remainRamAck, ackData, sizeof(GetRemainRamAck));
+  DSTATUS("Total memory is:%d\n", remainRamAck.totalMemory);
+  DSTATUS("Remain memory is:%d\n", remainRamAck.remainMemory);
   ErrorCode::ErrorCodeType ret = getWP2LinkerErrorCode(linkAck);
   return ret;
 }

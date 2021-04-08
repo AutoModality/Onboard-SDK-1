@@ -126,6 +126,22 @@ public:
    *  @param userData user data (void ptr)
    */
   void subscribeFrontStereoVGA(const uint8_t freq, VehicleCallBack callback = 0, UserData userData = 0);
+  
+  /*! @brief subscribe to VGA (480x640) front stereo images at 10 or 20 fps AutoModality's Version
+   *
+   *  @platforms M210V2, M300
+   *  @param frequency of images using enum from AdvancedSensingProtocol::FREQ
+   *  @param callback callback function
+   *  @param userData user data (void ptr)
+   *	@param camera_select 
+   *	1 ---------------------> front
+   *	2 ---------------------> left
+   *	3 ---------------------> right
+   *	4 ---------------------> rear
+   *	5 ---------------------> down
+   *	6 ---------------------> up 
+   */
+  void subscribeFrontStereoVGA(const uint8_t freq, int camera_select, VehicleCallBack callback = 0, UserData userData = 0);
   /*! @brief subscribe to QVGA (240x320) stereo depth map at 10 fps
    *
    *  @platforms M210V2
@@ -145,6 +161,19 @@ public:
    *  @platforms M210V2, M300
    */
   void unsubscribeVGAImages();
+  
+    /*!
+   *  @brief unsubscribe to VGA (480x640) stereo images AutoModality's Version
+   *
+   *  @platforms M210V2, M300
+   * 	1 ---------------------> front
+   *	2 ---------------------> left
+   *	3 ---------------------> right
+   *	4 ---------------------> rear
+   *	5 ---------------------> down
+   *	6 ---------------------> up 
+   */
+  void unsubscribeVGAImages(int camera_select);
   /*! @brief
    *
    *  A default callback function for QVGA stereo images

@@ -40,7 +40,7 @@ using namespace DJI::OSDK;
 
 #define TEST_OP_RELIABLE_PIPELINE_ID 49153
 #define TEST_OP_UNRELIABLE_PIPELINE_ID 49152
-#define RELIABLE_READ_ONCE_BUFFER_SIZE (2 * 1024 * 1024)
+#define RELIABLE_READ_ONCE_BUFFER_SIZE (3 * 1024 * 1024)
 #define UNRELIABLE_READ_ONCE_BUFFER_SIZE (100 * 1024)
 #define SEND_ONCE_BUFFER_SIZE (100 * 1024)
 #define TEST_RECV_FILE_NAME "test.mp4"
@@ -87,17 +87,17 @@ int writeStreamData(const char *fileName, const uint8_t *data, uint32_t len) {
   fp = fopen(fileName, "a+");
   if(fp == NULL) {
     DERROR("fopen failed!\n");
+    fclose(fp);
     return -1;
   }
   size = fwrite(data, 1, len, fp);
   if(size != len) {
+    fclose(fp);
     return -1;
   }
 
   fflush(fp);
-  if(fp) {
-    fclose(fp);
-  }
+  fclose(fp);
   return 0;
 }
 
@@ -214,6 +214,7 @@ static void OPDownloadFileTask(MopPipeline *OP_Pipeline) {
         MD5_Final(md5_out, &ctx);
         DSTATUS("Step 5 : Recv file raw data finish.");
         uploadState = MD5_RESULT_CHECK;
+        fclose(fp);
         break;
       }
       case MD5_RESULT_CHECK: {

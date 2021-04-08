@@ -26,6 +26,7 @@
  *
  */
 
+#include <stdio.h>
 #include <dji_linker.hpp>
 #include "dji_camera_module.hpp"
 #include "dji_vehicle_callback.hpp"
@@ -52,22 +53,42 @@ CameraModule::CameraModule(Linker* linker,
                            PayloadIndexType payloadIndex, std::string name,
                            bool enable)
     : PayloadBase(linker, payloadIndex, name, enable) {
-
+  cameraVersion = "UNKNOWN";
+  firmwareVersion = "UNKNOWN";
   OsdkOsal_TaskCreate(&camModuleHandle,
                       (void *(*)(void *)) (&camHWInfoTask),
-                      OSDK_TASK_STACK_SIZE_DEFAULT, this);
+                      OSDK_TASK_STACK_SIZE_DEFAULT / 2, this);
+  memset(&lensInfo, 0, sizeof(lensInfo));
+  OsdkOsal_MutexCreate(&lensUpdatedMutex);
+}
+
+void CameraModule::updateLensInfo(dji_camera_len_para_push data) {
+  OsdkOsal_MutexLock(lensUpdatedMutex);
+  lensInfo.data = data;
+  if (getCameraVersion() == "H20") lensInfo.data.min_focus_length = 237.75f;
+  OsdkOsal_GetTimeMs(&lensInfo.updateTimeStamp);
+  OsdkOsal_MutexUnlock(lensUpdatedMutex);
+}
+
+CameraModule::LensInfoPacketType CameraModule::getLensInfo() {
+  OsdkOsal_MutexLock(lensUpdatedMutex);
+  LensInfoPacketType ret = lensInfo;
+  OsdkOsal_MutexUnlock(lensUpdatedMutex);
+  return ret;
 }
 
 void CameraModule::camHWInfoTask(void *arg) {
   while (arg != NULL) {
     CameraModule *module = (CameraModule *)arg;
+
     module->requestCameraVersion();
-    OsdkOsal_TaskSleepMs(3000);
+    OsdkOsal_TaskSleepMs(2000);
   }
 }
 CameraModule::~CameraModule() {
   OsdkOsal_TaskDestroy(camModuleHandle);
   OsdkOsal_TaskSleepMs(100);
+  OsdkOsal_MutexDestroy(lensUpdatedMutex);
 }
 
 typedef struct handlerType {
@@ -829,12 +850,19 @@ ErrorCode::ErrorCodeType CameraModule::startContinuousOpticalZoomSync(
 
 ErrorCode::ErrorCodeType CameraModule::setOpticalZoomFactorSync(float factor, int timeout) {
   camera_zoom_data_type req = {0};
+  req.zoom_config.digital_zoom_enable = 0;
+  req.zoom_config.digital_zoom_mode = 1;
+  req.digital_zoom_param.pos_param.zoom_pos_level = 100;
   req.zoom_config.optical_zoom_mode = 1;
   req.zoom_config.optical_zoom_enable = 1;
   /*! factor in command struct is starting from 0, do adapting */
   factor = factor - 1;
   if (factor < 0) factor = 0;
   req.optical_zoom_param.pos_param.zoom_pos_level = (uint16_t)(factor * 100);
+  if (getCameraVersion() == "H20")
+    /*! internal magic number. will be improved in the future version */
+    req.optical_zoom_param.pos_param.zoom_pos_level =
+        (uint16_t) ((factor + 1) / 1.335f * 100);
   return setInterfaceSync(V1ProtocolCMD::Camera::setCommonZoomPara,
                           (uint8_t *) &req, sizeof(req), timeout * 1000 / 3, 3);
 }
@@ -1842,14 +1870,24 @@ CameraModule::CaptureParamData CameraModule::CreateDefCaptureParamData(ShootPhot
 
 #include <string.h>
 std::string CameraModule::getCameraVersion() {
+  //requestCameraVersion();
+  //DSTATUS("Camera Version : %s", cameraVersion.c_str());
   return cameraVersion;
 }
 
+std::string CameraModule::getFirmwareVersion() {
+  //requestCameraVersion();
+  //DSTATUS("Firmware Version : %s", firmwareVersion.c_str());
+  return firmwareVersion;
+}
 void CameraModule::requestCameraVersion() {
   uint8_t   temp = 0;
   T_CmdInfo cmdInfo        = { 0 };
   T_CmdInfo ackInfo        = { 0 };
-  uint8_t   ackData[1024];
+  uint8_t* ackData = (uint8_t*)OsdkOsal_Malloc(1024);
+  uint8_t magicNumberH20[] = {103, 100, 54, 49, 48, 0};
+  uint8_t magicNumberZ30[] = {67, 65, 48, 50, 0};
+  uint8_t magicNumberXT2[] = {88, 84, 95, 86, 50, 0};
 
   cmdInfo.cmdSet     = 0x00;
   cmdInfo.cmdId      = 0x01;
@@ -1861,17 +1899,29 @@ void CameraModule::requestCameraVersion() {
     OSDK_COMMAND_DEVICE_ID(OSDK_COMMAND_DEVICE_TYPE_CAMERA, getIndex() * 2);
   cmdInfo.sender     = this->getLinker()->getLocalSenderId();
   E_OsdkStat linkAck = this->getLinker()->sendSync(&cmdInfo, &temp, &ackInfo, ackData,
-                                                   500, 2);
-
+                                                   300, 2);
   if (linkAck == OSDK_STAT_ERR_TIMEOUT) {
-    cameraVersion = "Unmounted";
-  } else if ((linkAck == OSDK_STAT_OK) && (ackInfo.dataLen >= 18)) {
+    cameraVersion = "UNKNOWN";
+    firmwareVersion = "UNKNOWN";
+  } else if ((linkAck == OSDK_STAT_OK) && (ackInfo.dataLen >= 26)) {
     //3~18 : hardware version
-    if (strstr((char *)(ackData + 2), "gd610") != NULL) cameraVersion = "H20";
-    else if (strstr((char *)(ackData + 2), "CA02") != NULL) cameraVersion = "Z30";
-    else cameraVersion = "OtherCameras";
+    if (strstr((char *) (ackData + 2), (char *) magicNumberH20) != NULL)
+      cameraVersion = "H20";
+    else if (strstr((char *) (ackData + 2), (char *) magicNumberZ30) != NULL)
+      cameraVersion = "Z30";
+    else if (strstr((char *) (ackData + 2), (char *) magicNumberXT2) != NULL)
+      cameraVersion = "XT2";
+    else cameraVersion = (char *)(ackData + 2);
+
+    char fmVer[40] = {0};
+    sprintf(fmVer, "%d.%d.%d.%d", ackData[25], ackData[24], ackData[23], ackData[22]);
+    firmwareVersion = fmVer;
+    //DSTATUS("%s %s", cameraVersion.c_str(), firmwareVersion.c_str());
+
   } else {
-    cameraVersion = "Unknown";
+    cameraVersion = "UNKNOWN";
+    firmwareVersion = "UNKNOWN";
   }
+  OsdkOsal_Free(ackData);
   //DSTATUS("------------- cam[%d] cameraVersion = %s", getIndex(), cameraVersion.c_str());
 }

@@ -42,7 +42,7 @@ using namespace DJI::OSDK;
 #define OSDK_CMDID_REQ_SDR_LIVEVIEW             (0x68)
 
 #define OSDK_CAMERA_INDEX_LIVEVIEW              (0)
-#define OSDK_GD610_INDEX_LIVEVIEW               (1)
+#define OSDK_H20_INDEX_LIVEVIEW                 (1)
 
 #define OSDK_FPV_LIVEVIEW_CHANNEL               (81)
 #define OSDK_MAIN_CAMERA_LIVEVIEW_CHANNEL       (82)
@@ -196,7 +196,7 @@ LiveViewImpl::CameraListType LiveViewImpl::getCameraList() {
   item.userData = &typeList;
 
   bool registerRet = vehicle->linker->registerCmdHandler(&(handle));
-  DSTATUS("register result of geting camera pushing : %d\n", registerRet);
+  //DSTATUS("register result of geting camera pushing : %d\n", registerRet);
 
   uint8_t reqStartData[] = {0x01, 0x00, 0x02, 0x80};
   T_CmdInfo cmdInfo = {0};
@@ -287,9 +287,9 @@ int LiveViewImpl::subscribeLiveViewData(E_OSDKCameraType type, LiveView::LiveVie
   else subCtx->source.uuid.major = UUID_MAJOR_TYPE_CAMERA;
   subCtx->source.uuid.minor = ((type == OSDK_CAMERA_TYPE_PSDK) ? 1 : type); //hardcore
   subCtx->source.uuid.reserved = 0;
-  if ((type == OSDK_CAMERA_TYPE_GD610_DOUBLE_CAM)
-      || (type == OSDK_CAMERA_TYPE_GD610_TIRPLE_CAM))
-    subCtx->source.uuid.dataIdx = OSDK_GD610_INDEX_LIVEVIEW;
+  if ((type == OSDK_CAMERA_TYPE_H20_DOUBLE_CAM)
+      || (type == OSDK_CAMERA_TYPE_H20_TIRPLE_CAM))
+    subCtx->source.uuid.dataIdx = OSDK_H20_INDEX_LIVEVIEW;
   else
     subCtx->source.uuid.dataIdx = OSDK_CAMERA_INDEX_LIVEVIEW;
 
@@ -318,14 +318,11 @@ int LiveViewImpl::subscribeLiveViewData(E_OSDKCameraType type, LiveView::LiveVie
     goto send_fail;
   }
   if(ackInfo.dataLen == 1 && ackData[0] == 0) {
-    printf("subsrcibe data success!\n");
+    DSTATUS("subsrcibe data success!\n");
   } else {
-    printf("subscribe data failed!\n");
-    printf("ackData:");
-    for(int i = 0; i < ackInfo.dataLen; i++) {
-      printf("%x", ackData[i]);
-    }
-    printf("\nend\n");
+    DERROR("subsrcibe data failed!\n");
+    if (ackInfo.dataLen >= 1)
+      DERROR("Subscribe raw error code : 0x%02X", ackData[0]);
     goto subscribe_fail;
   }
   free(subCtx);
@@ -391,14 +388,16 @@ int LiveViewImpl::unsubscribeLiveViewData(LiveView::LiveViewCameraPosition pos) 
     goto send_fail;
   }
   if(ackInfo.dataLen == 1 && ackData[0] == 0) {
-    printf("unsubsrcibe data success!\n");
+/*    printf("unsubsrcibe data success!\n");*/
   } else {
+/*
     printf("unsubscribe data failed!\n");
     printf("ackData:");
     for(int i = 0; i < ackInfo.dataLen; i++) {
       printf("%x", ackData[i]);
     }
     printf("\nend\n");
+*/
     goto unsubscribe_fail;
   }
   free(unsubCtx);

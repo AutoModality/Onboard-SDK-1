@@ -113,7 +113,7 @@ void FileMgrImpl::printFileDownloadStatus() {
   if ((curPrintMs > lastPrintMs) && ((curPrintMs - lastPrintMs) < 600) &&
       (curFilePos > lastFilePos) &&
       curFilePos && lastFilePos && curPrintMs && lastPrintMs)
-    snprintf(speedMsg, sizeof(speedMsg), "%lu\tkB/s", (curFilePos - lastFilePos) / (curPrintMs - lastPrintMs));
+    snprintf(speedMsg, sizeof(speedMsg), "%llu\tkB/s", (curFilePos - lastFilePos) / (curPrintMs - lastPrintMs));
   else
     snprintf(speedMsg, sizeof(speedMsg), "--\tkB/s");
   lastFilePos = curFilePos;
@@ -130,7 +130,7 @@ void FileMgrImpl::printFileDownloadStatus() {
       : (fileDataHandler->mmap_file_buffer_->curFilePos * 100.0f /
          fileDataHandler->mmap_file_buffer_->fdAddrSize);
   DSTATUS("\033[0;32m[Complete rate : %0.1f%%] (%s\t recv:\t%d packs\t loss:\t%d packs) \033[0m",
-          speedMsg, finishPercent, recvPackCnt, lossPackCnt);
+          finishPercent, speedMsg, recvPackCnt, lossPackCnt);
 }
 
 void FileMgrImpl::fileListMonitorTask(void *arg) {
@@ -150,7 +150,7 @@ void FileMgrImpl::fileListMonitorTask(void *arg) {
 
       /*! Task timeout */
       if (curTimeMs - refreshTimeMs >= taskTimeOutMs) {
-        DSTATUS("curTimeMs:%d refreshTimeMs:%d", curTimeMs, refreshTimeMs);
+        DSTATUS("curTimeMs:%u refreshTimeMs:%u", curTimeMs, refreshTimeMs);
         DERROR("downloadMonitorTask timeout!! device type : %d index: %d", impl->type, impl->index);
 
           if (impl->fileListHandler->downloadState == RECVING_FILE_LIST) {
@@ -381,6 +381,7 @@ FileMgrImpl::FileNameRule FileMgrImpl::getNameRule() {
   T_CmdInfo cmdInfo        = { 0 };
   T_CmdInfo ackInfo        = { 0 };
   uint8_t   ackData[1024];
+  uint8_t magicNumberH20[] = {103, 100, 54, 49, 48, 0};
 
   cmdInfo.cmdSet     = 0x00;
   cmdInfo.cmdId      = 0x01;
@@ -396,7 +397,8 @@ FileMgrImpl::FileNameRule FileMgrImpl::getNameRule() {
 
   if ((linkAck == OSDK_STAT_OK) && (ackInfo.dataLen >= 18)) {
     //3~18 : hardware version
-    if (strstr((char *)(ackData + 2), "gd610") != NULL) return H20_RULE;
+    if (strstr((char *) (ackData + 2), (char *) magicNumberH20) != NULL)
+      return H20_RULE;
     else return ORIGIN_RULE;
   } else {
     return UNKNOWN_RULE;
@@ -407,10 +409,6 @@ ErrorCode::ErrorCodeType FileMgrImpl::startReqFileList(FileMgr::FileListReqCBTyp
   if ((fileListHandler->downloadState == DOWNLOAD_IDLE) &&
       (fileDataHandler->downloadState == DOWNLOAD_IDLE)) {
     nameRule = getNameRule();
-    if(nameRule == UNKNOWN_RULE)  {
-      DERROR("Cannot get camera status .");
-      return ErrorCode::CameraCommonErr::UndefineError;
-    }
     fileListHandler->downloadState = RECVING_FILE_LIST;
     if (fileListHandler->download_buffer_) {
       fileListHandler->download_buffer_->Clear();
@@ -580,112 +578,142 @@ std::string FileMgrImpl::GetSuffixByFileType(MediaFileType type) {
 }
 
 FilePackage FileMgrImpl::parseFileList(std::list<DataPointer> fullDataList) {
-  static size_t chunk_index = 0;
+  const uint32_t maxDataFrameLen = 1024; //link data frame max size
+  size_t chunk_index = 0;
   FilePackage pack;
   pack.type = FileType::UNKNOWN;
   //pack.common.clear();
   pack.media.clear();
   if (fullDataList.size() == 0) return pack;
+  auto dataFront = fullDataList.front();
+  if (dataFront.length < (sizeof(dji_general_transfer_msg_ack) - 1
+      + sizeof(dji_file_list_download_resp) - sizeof(dji_list_info_descriptor)))
+    return pack;
 
-  ParsingFileListStateEnum parsingState = PARSING_TOTAL_HEADER;
-  while (fullDataList.size() != 0) {
-    auto dataPtr = fullDataList.front();
-    switch (parsingState) {
-      case PARSING_TOTAL_HEADER: {
-        chunk_index = 0;
-        uint32_t consumeBytes = sizeof(dji_general_transfer_msg_ack) - sizeof(uint8_t);
-        auto buffer = ConsumeChunk(dataPtr, chunk_index, consumeBytes);
-        if (buffer.index == consumeBytes) {
-          auto data = (dji_general_transfer_msg_ack *)(buffer.data);
-          //DSTATUS("Unpack datapack seq(%d)", data->seq);
-          parsingState = (data->seq == 0) ? PARSING_DATA_HEADER : PARSING_FILEINFO;
-        } else {
-          parsingState = PARSE_FINISH;
-        }
-        break;
-      }
-      case PARSING_DATA_HEADER: {
-        uint32_t consumeBytes = sizeof(dji_file_list_download_resp) - sizeof(dji_list_info_descriptor);
-        auto buffer = ConsumeChunk(dataPtr, chunk_index, consumeBytes);
-        if (buffer.index == consumeBytes) {
-          auto data = (dji_file_list_download_resp *)(buffer.data);
-          DSTATUS("###data->amount = %d, data->len = %d", data->amount, data->len);
-          parsingState = PARSING_FILEINFO;
-        } else {
-          parsingState = PARSE_FINISH;
-        }
-        break;
-      }
-      case PARSING_FILEINFO:{
-        uint32_t consumeBytes = sizeof(dji_list_info_descriptor) - sizeof(dji_file_list_ext_info);
-        auto buffer = ConsumeChunk(dataPtr, chunk_index, consumeBytes);
-        if (buffer.index == consumeBytes) {
-          if (pack.type == FileType::UNKNOWN)pack.type = FileType::MEDIA;
-          auto data = (dji_list_info_descriptor *)(buffer.data);
-          //DSTATUS("data->index = %d, data->size = %d", data->index, data->size);
-          /*! 构建file信息,装入容器 */
-          MediaFile file = {0};
-          file.valid = true;
-          file.date.year = data->create_time.year + 1980;
-          file.date.month = data->create_time.month;
-          file.date.day = data->create_time.day;
-          file.date.hour = data->create_time.hour;
-          file.date.minute = data->create_time.minute;
-          file.date.second = data->create_time.second * 2;
-          file.fileIndex = data->index;
-          file.fileSize = data->size;
-          file.fileType = (MediaFileType)data->type;
-          if ((data->type == (uint8_t) MediaFileType::MOV)
-              || (data->type == (uint8_t) MediaFileType::MP4)) {
-            file.duration = data->attribute.video_attribute.attribute_video_duration;
-            file.orientation = (CameraOrientation)data->attribute.video_attribute.attribute_video_rotation;
-            file.resolution = (VideoResolution)data->attribute.video_attribute.attribute_video_resolution;
-            file.frameRate = (VideoFrameRate)data->attribute.video_attribute.attribute_video_framerate;
-          } else if ((data->type == (uint8_t) MediaFileType::JPEG)
-              || (data->type == (uint8_t) MediaFileType::DNG)
-              || (data->type == (uint8_t) MediaFileType::TIFF)) {
-            file.orientation = (CameraOrientation)data->attribute.photo_attribute.attribute_photo_rotation;
-            file.photoRatio = (PhotoRatio)data->attribute.photo_attribute.attribute_photo_ratio;
-          }
-          file.fileName = GetFileName(file);
-
-          bool validFlagBasic = true;
-          bool validFlagNew = true;
-          if (nameRule == H20_RULE) {
-            if ((GetSuffixByFileType(file.fileType) != unsupportFileName) &&
-                (GetFileCameraType(file.fileIndex) != unsupportFileCameraType))
-              validFlagNew = true;
-            else
-              validFlagNew = false;
-          }
-
-          if ((file.valid) && (file.fileSize > 0) && (file.date.year != 1980))
-            validFlagBasic = true;
-          else
-            validFlagBasic = false;
-
-          if (validFlagNew && validFlagBasic)
-            pack.media.push_back(file);
-
-          /*! 这部分消耗了就算了,目前不解析 */
-          if (data->ext_size) {
-            auto extBuffer = ConsumeChunk(dataPtr, chunk_index, data->ext_size);
-            auto extData = (dji_ext_info_descriptor *) (extBuffer.data);
-            //DSTATUS("extData->id = %d, %s", extData->id, extData->data);
-          }
-          parsingState = PARSING_FILEINFO;
-        } else {
-          parsingState = PARSE_FINISH;
-        }
-        break;
-      }
-      case PARSE_FINISH:
-        fullDataList.pop_front();
-        parsingState = PARSING_TOTAL_HEADER;
-        break;
-      default:break;
-    }
+  /*! Parse file list total info */
+  auto listdata = (dji_file_list_download_resp *)((uint8_t *)dataFront.data + sizeof(dji_general_transfer_msg_ack) - 1);
+  DSTATUS("###data->amount = %d, data->len = %d", listdata->amount, listdata->len);
+  if (listdata->len > fullDataList.size() * maxDataFrameLen) {
+    DERROR("File list total data len error !");
+    return pack;
   }
+
+  /*! Make the total data buffer */
+  DataPointer dataPtr = {malloc(listdata->len), 0};
+  if (!dataPtr.data) {
+    DERROR("Malloc error !");
+    return pack;
+  }
+  while (fullDataList.size() != 0) {
+    auto f = fullDataList.front();
+    auto pack = (dji_general_transfer_msg_ack *)(f.data);
+    int cpSize = pack->msg_length - sizeof(dji_general_transfer_msg_ack) + 1;
+
+    memcpy((uint8_t *) dataPtr.data + dataPtr.length, pack->data, cpSize);
+    dataPtr.length += cpSize;
+    fullDataList.pop_front();
+  }
+
+  /*! Parsing dataPtr */
+  ParsingFileListStateEnum parsingState = PARSING_TOTAL_HEADER;
+    while (parsingState != PARSE_FINISH) {
+      switch (parsingState) {
+        case PARSING_TOTAL_HEADER: {
+          /*! dataPtr skip it */
+          parsingState = PARSING_DATA_HEADER;
+          break;
+        }
+        case PARSING_DATA_HEADER: {
+          uint32_t consumeBytes = sizeof(dji_file_list_download_resp)
+              - sizeof(dji_list_info_descriptor);
+          auto buffer = ConsumeChunk(dataPtr, chunk_index, consumeBytes);
+          if (buffer.index == consumeBytes) {
+            parsingState = PARSING_FILEINFO;
+          } else {
+            parsingState = PARSE_FINISH;
+          }
+          break;
+        }
+        case PARSING_FILEINFO: {
+          uint32_t consumeBytes =
+              sizeof(dji_list_info_descriptor) - sizeof(dji_file_list_ext_info);
+          auto buffer = ConsumeChunk(dataPtr, chunk_index, consumeBytes);
+          if (buffer.index == consumeBytes) {
+            if (pack.type == FileType::UNKNOWN)pack.type = FileType::MEDIA;
+            auto data = (dji_list_info_descriptor *) (buffer.data);
+            //DSTATUS("data->index = %d, data->size = %d", data->index, data->size);
+            /*! 构建file信息,装入容器 */
+            MediaFile file = {0};
+            file.valid = true;
+            file.date.year = data->create_time.year + 1980;
+            file.date.month = data->create_time.month;
+            file.date.day = data->create_time.day;
+            file.date.hour = data->create_time.hour;
+            file.date.minute = data->create_time.minute;
+            file.date.second = data->create_time.second * 2;
+            file.fileIndex = data->index;
+            file.fileSize = data->size;
+            file.fileType = (MediaFileType) data->type;
+            if ((data->type == (uint8_t) MediaFileType::MOV)
+                || (data->type == (uint8_t) MediaFileType::MP4)) {
+              file.duration =
+                  data->attribute.video_attribute.attribute_video_duration;
+              file.orientation =
+                  (CameraOrientation) data->attribute.video_attribute.attribute_video_rotation;
+              file.resolution =
+                  (VideoResolution) data->attribute.video_attribute.attribute_video_resolution;
+              file.frameRate =
+                  (VideoFrameRate) data->attribute.video_attribute.attribute_video_framerate;
+            } else if ((data->type == (uint8_t) MediaFileType::JPEG)
+                || (data->type == (uint8_t) MediaFileType::DNG)
+                || (data->type == (uint8_t) MediaFileType::TIFF)) {
+              file.orientation =
+                  (CameraOrientation) data->attribute.photo_attribute.attribute_photo_rotation;
+              file.photoRatio =
+                  (PhotoRatio) data->attribute.photo_attribute.attribute_photo_ratio;
+            }
+            file.fileName = GetFileName(file);
+
+            bool validFlagBasic = true;
+            bool validFlagNew = true;
+            if (nameRule == H20_RULE) {
+              if ((GetSuffixByFileType(file.fileType) != unsupportFileName) &&
+                  (GetFileCameraType(file.fileIndex)
+                      != unsupportFileCameraType))
+                validFlagNew = true;
+              else
+                validFlagNew = false;
+            }
+
+            if ((file.valid)
+                && (file.fileSize > 0))// && (file.date.year != 1980))
+              validFlagBasic = true;
+            else
+              validFlagBasic = false;
+
+            if (validFlagNew && validFlagBasic)
+              pack.media.push_back(file);
+
+            /*! 这部分消耗了就算了,目前不解析 */
+            if (data->ext_size) {
+              auto extBuffer =
+                  ConsumeChunk(dataPtr, chunk_index, data->ext_size);
+              //auto extData = (dji_ext_info_descriptor *) (extBuffer.data);
+              //DSTATUS("extData->id = %d, %s", extData->id, extData->data);
+            }
+            parsingState = PARSING_FILEINFO;
+          } else {
+            //DSTATUS("---chunk_index = %d", chunk_index);
+            parsingState = PARSE_FINISH;
+          }
+          break;
+        }
+        case PARSE_FINISH:
+          break;
+        default:break;
+      }
+    }
+  free(dataPtr.data);
   return pack;
 }
 
@@ -875,7 +903,7 @@ void FileMgrImpl::OnReceiveDataPack(dji_general_transfer_msg_ack *rsp) {
   if (rsp->func_id != DJI_GENERAL_DOWNLOAD_FILE_FUNC_TYPE_DATA) return;
 
   static uint32_t lastSeq = 0;
-  //DSTATUS("\033[1;32;40m##[seq] = %d \033[0m", rsp->seq);
+  //DSTATUS("\033[1;32;40m##[seq] = %d; [len] = %d; [flag] = %d;\033[0m", rsp->seq, rsp->msg_length, rsp->msg_flag);
   if (rsp->seq == 0) DSTATUS("[First pack] get the first pack");
   else if (rsp->seq != lastSeq + 1) DSTATUS("[Skip packs]------------------->skip seq : lastSeq = %d, rsp->seq = %d", lastSeq, rsp->seq);
   lastSeq = rsp->seq;

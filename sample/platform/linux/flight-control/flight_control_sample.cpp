@@ -461,7 +461,6 @@ moveByPositionOffset(Vehicle *vehicle, float xOffsetDesired,
 
     usleep(cycleTimeInMs * 1000);
     elapsedTimeInMs += cycleTimeInMs;
-
     //! Get current position in required coordinates and units
     if (!vehicle->isM100() && !vehicle->isLegacyM600())
     {

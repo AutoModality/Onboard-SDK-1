@@ -38,6 +38,22 @@
 using namespace DJI::OSDK;
 using namespace DJI::OSDK::Telemetry;
 
+void ObtainJoystickCtrlAuthorityCB(ErrorCode::ErrorCodeType errorCode, UserData userData)
+{
+  if (errorCode == ErrorCode::FlightControllerErr::SetControlParam::ObtainJoystickCtrlAuthoritySuccess)
+  {
+    DSTATUS("ObtainJoystickCtrlAuthoritySuccess");
+  }
+}
+
+void ReleaseJoystickCtrlAuthorityCB(ErrorCode::ErrorCodeType errorCode, UserData userData)
+{
+  if (errorCode == ErrorCode::FlightControllerErr::SetControlParam::ReleaseJoystickCtrlAuthoritySuccess)
+  {
+    DSTATUS("ReleaseJoystickCtrlAuthoritySuccess");
+  }
+}
+
 int main(int argc, char** argv) {
   // Initialize variables
   int functionTimeout = 1;
@@ -51,8 +67,8 @@ int main(int argc, char** argv) {
   }
 
   // Obtain Control Authority
-  // TODO: move this to flight controlller
-  vehicle->control->obtainCtrlAuthority(functionTimeout);
+  // ErrorCode::ErrorCodeType ret = vehicle->flightController->obtainJoystickCtrlAuthoritySync(functionTimeout);
+  vehicle->flightController->obtainJoystickCtrlAuthorityAsync(ObtainJoystickCtrlAuthorityCB, nullptr ,functionTimeout, 2);
   FlightSample* flightSample = new FlightSample(vehicle);
   // Display interactive prompt
   std::cout
@@ -67,31 +83,38 @@ int main(int argc, char** argv) {
   std::cout << "| [c] Monitored Takeoff + Position Control + Force Landing "
                "Avoid Ground  |"
             << std::endl;
+  std::cout << "| [d] Monitored Takeoff + Velocity Control + Landing |"
+            << std::endl;
 
   char inputChar;
   std::cin >> inputChar;
 
   switch (inputChar) {
     case 'a':
-      monitoredTakeoff(vehicle);
-      monitoredLanding(vehicle);
+    {
+      flightSample->monitoredTakeoff();
+      flightSample->monitoredLanding();
       break;
+    }
     case 'b':
-      monitoredTakeoff(vehicle);
+    {
+      flightSample->monitoredTakeoff();
+
       DSTATUS("Take off over!\n");
-      moveByPositionOffset(vehicle, 0, 6, 6, 30, 0.8, 1);
+      flightSample->moveByPositionOffset((FlightSample::Vector3f){0, 6, 6}, 30, 0.8, 1);
       DSTATUS("Step 1 over!\n");
-      moveByPositionOffset(vehicle, 6, 0, -3, -30, 0.8, 1);
+      flightSample->moveByPositionOffset((FlightSample::Vector3f){6, 0, -3}, -30, 0.8, 1);
       DSTATUS("Step 2 over!\n");
-      moveByPositionOffset(vehicle, -6, -6, 0, 0, 0.8, 1);
+      flightSample->moveByPositionOffset((FlightSample::Vector3f){-6, -6, 0}, 0, 0.8, 1);
       DSTATUS("Step 3 over!\n");
-      monitoredLanding(vehicle);
+      flightSample->monitoredLanding();
       break;
+    }
 
-    /*! @NOTE: case 'c' only support for m210 V2*/
+    /*! @NOTE: case 'c' only support for m210 V2 and M300*/
     case 'c':
+    {
       /*!  Take off */
-
       flightSample->monitoredTakeoff();
       vehicle->flightController->setCollisionAvoidanceEnabledSync(
           FlightController::AvoidEnable::AVOID_ENABLE, 1);
@@ -119,10 +142,39 @@ int main(int argc, char** argv) {
       vehicle->flightController->setCollisionAvoidanceEnabledSync(
         FlightController::AvoidEnable::AVOID_ENABLE, 1);
       break;
+    }
+
+    case 'd':
+    {
+      flightSample->monitoredTakeoff();
+      DSTATUS("Take off over!\n");
+
+      flightSample->velocityAndYawRateCtrl((FlightSample::Vector3f){0, 0, 5.0}, 0, 2000);
+      DSTATUS("Step 1 over!EmergencyBrake for 2s\n");
+      flightSample->emergencyBrake();
+      sleep(2);
+      flightSample->velocityAndYawRateCtrl((FlightSample::Vector3f){-1.5, 2, 0}, 0, 2000);
+      DSTATUS("Step 2 over!EmergencyBrakefor 2s\n");
+      flightSample->emergencyBrake();
+      sleep(2);
+      flightSample->velocityAndYawRateCtrl((FlightSample::Vector3f){3, 0, 0}, 0, 2500);
+      DSTATUS("Step 3 over!EmergencyBrake for 2s\n");
+      flightSample->emergencyBrake();
+      sleep(2);
+      flightSample->velocityAndYawRateCtrl((FlightSample::Vector3f){-1.6, -2, 0}, 0, 2200);
+      DSTATUS("Step 4 over!EmergencyBrake for 2s\n");
+      flightSample->emergencyBrake();
+      sleep(2);
+
+      flightSample->monitoredLanding();
+    }
+
     default:
       break;
   }
 
+  // ret = vehicle->flightController->releaseJoystickCtrlAuthoritySync(functionTimeout);
+  vehicle->flightController->releaseJoystickCtrlAuthorityAsync(ReleaseJoystickCtrlAuthorityCB, nullptr ,functionTimeout, 2);
   delete flightSample;
   return 0;
 }

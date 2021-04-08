@@ -38,21 +38,21 @@ namespace DJI {
  */
 typedef struct CGPoint {
   /*! x axis focus point value
-   * range: [0,10000]
+   * range: [0,1]
    */
-  uint16_t x;
+  float32_t x;
   /*! y axis focus point value
-   * range: [0,10000]
+   * range: [0,1]
    */
-  uint16_t y;
+  float32_t y;
 } CGPoint;
 
 /*! Gimbal rotation parameter
  */
 typedef struct DJIGimbalRotation {
 
-  int16_t x;  /*! gimbal roll angle,  unit: 0.1 deg,range:[-200, 200]*/
-  int16_t y;  /*! gimbal pitch angle, unit: 0.1 deg,range:[-1300, 1300]*/
+  int16_t x;  /*! gimbal roll angle,  unit: 0.1 deg,range:[-3600, 3600]*/
+  int16_t y;  /*! gimbal pitch angle, unit: 0.1 deg,range:[-3600, 3600]*/
   int16_t z;  /*! gimbal yaw angle,   unit: 0.1 deg,range:[-3600, 3600]*/
   uint8_t ctrl_mode:1;   /*! 0: absolute position control, 1:relative position control*/
   uint8_t rollCmdIgnore:1;/*! 0: roll command normal,  1: roll command ignore*/
@@ -63,30 +63,6 @@ typedef struct DJIGimbalRotation {
   uint8_t reserved:3;
   uint8_t duationTime;  /*! 0: rotate time,unit:0.1s, range[1,255]*/
 } DJIGimbalRotation;
-
-/**
-*  This class defines
-* ``DJIWaypointV2MissionV2_DJIWaypointV2ActionTriggerType_ReachPoint``.
-*  It describes an action will be triggered when the aircraft reach the certain
-* waypoint.
-*/
-typedef struct DJIWaypointV2ReachPointTriggerParam {
-  /**
-   *  It determines the index of the waypoint at which the action will be
-   * triggered.
-   */
-  uint16_t startIndex;
-
-  uint16_t endIndex;
-
-  uint16_t intervalWPNum;
-
-  /**
-   *  It determines the waypoint count till the action triggered stops.
-   */
-  uint16_t waypointCountToTerminate;
-
-} DJIWaypointV2ReachPointTriggerParam;
 
 typedef struct DJIWaypointV2SampleReachPointTriggerParam {
   /**
@@ -149,14 +125,14 @@ typedef struct DJIWaypointV2IntervalTriggerParam {
    *  If the
    * ``DJIWaypointV2Action_DJIWaypointV2IntervalTriggerParam_actionIntervalType``
    * is ``DJIWaypointV2MissionV2_DJIWaypointV2TriggerAssociatedTimingType_Time``
-   *  The time interval in seconds when two action are executed as the aircraft
+   *  The time interval in 0.01 seconds when two action are executed as the aircraft
    * moves
    *  from the current waypoint to the next waypoint.
    *  If the
    * ``DJIWaypointV2Action_DJIWaypointV2IntervalTriggerParam_actionIntervalType``
    * is
    * ``DJIWaypointV2MissionV2_DJIWaypointV2TriggerAssociatedTimingType_Distance``
-   *  The distance interval in meters when two action are executed as the
+   *  The distance interval in 0.01 meters when two action are executed as the
    * aircraft
    * moves
    *  from the current waypoint to the next waypoint.
@@ -185,10 +161,30 @@ typedef struct DJIWaypointV2CameraFocusParam {
    */
   CGPoint focusTarget;
 
+  /**
+   * focus type:
+   * 0:point focus
+   * 1:rectangle focus
+   */
+  uint8_t regionType;
+
+  /**
+   * Normalized focus area width(0,1)
+   */
+  float32_t width;
+
+  /**
+   * Normalized focus area height(0,1)
+   */
+
+  float32_t height;
+
+  uint32_t reserve;
+
+  /**
+   * [0,255]
+   */
   uint8_t retryTimes = 1;
-
-  uint8_t focusDelayTime = 0;
-
 } DJIWaypointV2CameraFocusParam;
 
 /**
@@ -221,7 +217,7 @@ typedef struct DJIWaypointV2AircraftControlRotateHeadingParam {
    */
   uint8_t isRelative:1;
 
-  uint8_t reserved:8;
+  uint8_t reserved:7;
 
   /**
    *  Determines the direction how aircraft changes its heading.
@@ -249,11 +245,6 @@ typedef struct DJIWaypointV2Trigger
   DJIWaypointV2Trigger(const DJIWaypointV2ActionTriggerType &type,const void *param)
   {actionTriggerType = type;
     switch (actionTriggerType) {
-      case DJIWaypointV2ActionTriggerTypeReachPoint:
-      {
-        reachPointTriggerParam = *(DJIWaypointV2ReachPointTriggerParam*)param;
-        break;
-      }
       case DJIWaypointV2ActionTriggerTypeActionAssociated: {
         associateTriggerParam = *(DJIWaypointV2AssociateTriggerParam *)param;
         break;
@@ -277,7 +268,6 @@ typedef struct DJIWaypointV2Trigger
   DJIWaypointV2ActionTriggerType actionTriggerType;
   union {
     DJIWaypointV2SampleReachPointTriggerParam sampleReachPointTriggerParam;
-    DJIWaypointV2ReachPointTriggerParam      reachPointTriggerParam;
     DJIWaypointV2AssociateTriggerParam associateTriggerParam;
     DJIWaypointV2TrajectoryTriggerParam trajectoryTriggerParam;
     DJIWaypointV2IntervalTriggerParam intervalTriggerParam;
@@ -350,6 +340,7 @@ typedef struct DJIWaypointV2GimbalActuatorParam {
 
   DJIWaypointV2GimbalActuatorParam(const DJIWaypointV2ActionActuatorGimbalOperationType &type , void *param)
   {
+    operationType =type;
     switch (type) {
       case DJIWaypointV2ActionActuatorGimbalOperationTypeRotateGimbal:
         rotation =  *(DJIGimbalRotation*)param;
@@ -381,6 +372,7 @@ typedef struct DJIWaypointV2AircraftControlParam {
 
   DJIWaypointV2AircraftControlParam(const DJIWaypointV2ActionActuatorAircraftControlOperationType &type , void *param)
   {
+    operationType =type;
     switch (type) {
       case DJIWaypointV2ActionActuatorAircraftControlOperationTypeRotateYaw: {
         yawRotatingParam =  *(DJIWaypointV2AircraftControlRotateHeadingParam *)param;

@@ -252,12 +252,12 @@ typedef struct M300VGAHandlerData {
 void M300VGAHandleCB(Perception::ImageInfoType info, uint8_t *imageRawBuffer,
                        int bufferLen, void *userData) {
   static DJI::OSDK::ACK::StereoVGAImgData stereoVGAImg = {0};
-  DSTATUS("image info : dataId(%d) seq(%d) timestamp(%d) datatype(%d)",
+  /*DSTATUS("image info : dataId(%d) seq(%d) timestamp(%d) datatype(%d)",
           info.dataId, info.sequence,
-          info.timeStamp, info.dataType);
-  DSTATUS("image info : index(%d) h(%d) w(%d) dir(%d) bpp(%d) bufferlen(%d)",
+          info.timeStamp, info.dataType);*/
+  /*DSTATUS("image info : index(%d) h(%d) w(%d) dir(%d) bpp(%d) bufferlen(%d)",
           info.rawInfo.index, info.rawInfo.height, info.rawInfo.width,
-          info.rawInfo.direction, info.rawInfo.bpp, bufferLen);
+          info.rawInfo.direction, info.rawInfo.bpp, bufferLen);*/
   if (bufferLen != 480 * 640) {
     DERROR("Error image raw data len : %d, should be 480 * 640.", bufferLen);
     return;
@@ -275,7 +275,7 @@ void M300VGAHandleCB(Perception::ImageInfoType info, uint8_t *imageRawBuffer,
   switch (stereoVGAImg.num_imgs) {
     case 0 :
       /*! get the first VGA image */
-      DSTATUS("#### ( 1 ) get the first VGA image");
+      //DSTATUS("#### ( 1 ) get the first VGA image");
       stereoVGAImg.direction = info.rawInfo.direction;
       stereoVGAImg.frame_index = info.rawInfo.index;
       stereoVGAImg.time_stamp = info.timeStamp;
@@ -287,7 +287,7 @@ void M300VGAHandleCB(Perception::ImageInfoType info, uint8_t *imageRawBuffer,
       if ((stereoVGAImg.direction == info.rawInfo.direction) &&
           (stereoVGAImg.frame_index == info.rawInfo.index) &&
           (stereoVGAImg.time_stamp == info.timeStamp)) {
-        DSTATUS("#### ( 2 ) get the second VGA image");
+        //DSTATUS("#### ( 2 ) get the second VGA image");
         memcpy(stereoVGAImg.img_vec[1], imageRawBuffer, 480 * 640);
         RecvContainer recvFrame = {0};
         recvFrame.recvData.stereoVGAImgData = &stereoVGAImg;
@@ -296,7 +296,7 @@ void M300VGAHandleCB(Perception::ImageInfoType info, uint8_t *imageRawBuffer,
         stereoVGAImg.num_imgs = 0;
       } else {
         /*! replace the first VGA image */
-        DSTATUS("#### (1.5) replace the first VGA image");
+        //DSTATUS("#### (1.5) replace the first VGA image");
         stereoVGAImg.direction = info.rawInfo.direction;
         stereoVGAImg.frame_index = info.rawInfo.index;
         stereoVGAImg.time_stamp = info.timeStamp;
@@ -357,6 +357,86 @@ AdvancedSensing::subscribeFrontStereoVGA(const uint8_t freq,
     m300handler.vehicle = vehicle_ptr;
     m300handler.handler = {callback, userData};
     perception->subscribePerceptionImage(Perception::RECTIFY_FRONT, M300VGAHandleCB, &m300handler);
+  }
+}
+
+void 
+AdvancedSensing::subscribeFrontStereoVGA(const uint8_t freq, int camera_select, VehicleCallBack callback, UserData userData)
+{
+/*
+  if (!vehicle_ptr->isUSBThreadReady())
+  {
+    DERROR("USB thread is not ready, please make sure AdvancedSensing is set up correctly.\n");
+    if (!versionPass())
+    {
+      DERROR("Please make sure the connected drone is a M210 and firmware version is supported. "
+               "subscription failed.\n");
+    }
+    return;
+  }
+*/
+  if (vehicle_ptr->isM210V2()) {
+    AdvancedSensingConfig config;
+    memset(&config, 0, sizeof(config));
+    config.is_vga_img_subscribed = true;
+    config.vga_subscription.image_selection[0][AdvancedSensingProtocol::FRONT].img_flag = 1;
+    config.vga_subscription.image_selection[0][AdvancedSensingProtocol::FRONT].img_freq = freq;
+    config.vga_subscription.image_selection[0][AdvancedSensingProtocol::FRONT].img_resolution = 1;
+
+    uint8_t *data = (uint8_t *) &(config.vga_subscription);
+
+    if (callback) {
+      vgaHandler.callback = callback;
+      vgaHandler.userData = userData;
+    } else {
+      vgaHandler.callback = &AdvancedSensing::VGACallback;
+      vgaHandler.userData = NULL;
+    }
+
+    sendCommonCmd(data, sizeof(config.vga_subscription),
+                  AdvancedSensingProtocol::SELECT_VGA_IMG_CMD_ID);
+
+    sendCommonCmd(NULL, 0, AdvancedSensingProtocol::START_CMD_ID);
+  } 
+  else if (vehicle_ptr->isM300()) 
+  {
+    DSTATUS("M300 VGA freq is running at a default value at 20Hz. So the "
+            "parameter freq is useless here.");
+    static M300VGAHandlerData m300handler;
+    m300handler.vehicle = vehicle_ptr;
+    m300handler.handler = {callback, userData};
+    
+  /*	1 ---------------------> front
+   *	2 ---------------------> left
+   *	3 ---------------------> right
+   *	4 ---------------------> rear
+   *	5 ---------------------> down
+   *	6 ---------------------> up 
+   */
+    switch(camera_select)
+    {
+    	case 1:
+    		perception->subscribePerceptionImage(Perception::RECTIFY_FRONT, M300VGAHandleCB, &m300handler);
+    		break;
+    	case 2:
+    		perception->subscribePerceptionImage(Perception::RECTIFY_LEFT, M300VGAHandleCB, &m300handler);
+    		break;
+    	case 3:
+    		perception->subscribePerceptionImage(Perception::RECTIFY_RIGHT, M300VGAHandleCB, &m300handler);
+    		break;
+    	case 4:
+    		perception->subscribePerceptionImage(Perception::RECTIFY_REAR, M300VGAHandleCB, &m300handler);
+    		break;
+    	case 5:
+    		perception->subscribePerceptionImage(Perception::RECTIFY_DOWN, M300VGAHandleCB, &m300handler);
+    		break;
+    	case 6:
+    		perception->subscribePerceptionImage(Perception::RECTIFY_UP, M300VGAHandleCB, &m300handler);
+    		break;
+    	default:
+    		return;
+    }
+    
   }
 }
 
@@ -432,11 +512,77 @@ AdvancedSensing::unsubscribeVGAImages()
                   AdvancedSensingProtocol::SELECT_VGA_IMG_CMD_ID);
 
     sendCommonCmd(NULL, 0, AdvancedSensingProtocol::START_CMD_ID);
-  } else if (vehicle_ptr->isM300()) {
+  } 
+  else if (vehicle_ptr->isM300()) 
+  {
     perception->unsubscribePerceptionImage(Perception::RECTIFY_FRONT);
   }
 }
 
+    /*!
+   *  @brief unsubscribe to VGA (480x640) stereo images AutoModality's Version
+   *
+   *  @platforms M210V2, M300
+   * 	1 ---------------------> front
+   *	2 ---------------------> left
+   *	3 ---------------------> right
+   *	4 ---------------------> rear
+   *	5 ---------------------> down
+   *	6 ---------------------> up 
+   */
+void
+AdvancedSensing::unsubscribeVGAImages(int camera_select)
+{
+  if (vehicle_ptr->isM210V2()) {
+    AdvancedSensingConfig config;
+    memset(&config, 0, sizeof(config));
+
+    config.is_vga_img_subscribed = true;
+
+    for (int i = 0; i < 2; ++i) {
+      for (int j = 0; j < AdvancedSensingProtocol::DISPARITY; ++j) {
+        config.vga_subscription.image_selection[i][j].img_flag = 1;
+        config.vga_subscription.image_selection[i][j].img_freq =
+            AdvancedSensingProtocol::FREQ_20HZ;
+        config.vga_subscription.image_selection[i][j].img_resolution = 0;
+      }
+    }
+
+    uint8_t *data = (uint8_t *) &(config.vga_subscription);
+
+    sendCommonCmd(data, sizeof(config.vga_subscription),
+                  AdvancedSensingProtocol::SELECT_VGA_IMG_CMD_ID);
+
+    sendCommonCmd(NULL, 0, AdvancedSensingProtocol::START_CMD_ID);
+  } 
+  else if (vehicle_ptr->isM300()) 
+  {
+  	switch(camera_select)
+  	{
+  		case 1:
+  			perception->unsubscribePerceptionImage(Perception::RECTIFY_FRONT);
+  			break;
+  		case 2:
+  			perception->unsubscribePerceptionImage(Perception::RECTIFY_LEFT);
+  			break;
+  		case 3:
+  			perception->unsubscribePerceptionImage(Perception::RECTIFY_RIGHT);
+  			break;
+  		case 4:
+  			perception->unsubscribePerceptionImage(Perception::RECTIFY_REAR);
+  			break;
+  		case 5:
+  			perception->unsubscribePerceptionImage(Perception::RECTIFY_DOWN);
+  			break;
+  		case 6:
+  			perception->unsubscribePerceptionImage(Perception::RECTIFY_UP);
+  			break;		
+  		default:
+  			return;
+  	}
+    
+  }
+}
 void
 AdvancedSensing::sendCommonCmd(uint8_t *data, uint8_t data_len, uint8_t cmd_id)
 {
@@ -513,11 +659,11 @@ bool AdvancedSensing::startMainCameraStream(CameraImageCallback cb, void * cbPar
 void AdvancedSensing::stopFPVCameraStream()
 {
   if (vehicle_ptr->isM300()) {
+    stopH264Stream(LiveView::OSDK_CAMERA_POSITION_FPV);
     auto deocderPair = streamDecoder.find(LiveView::OSDK_CAMERA_POSITION_FPV);
     if ((deocderPair != streamDecoder.end()) && deocderPair->second) {
       deocderPair->second->cleanup();
     }
-    stopH264Stream(LiveView::OSDK_CAMERA_POSITION_FPV);
   } else {
     fpvCam_ptr->stopCameraStream();
   }
@@ -526,11 +672,11 @@ void AdvancedSensing::stopFPVCameraStream()
 void AdvancedSensing::stopMainCameraStream()
 {
   if (vehicle_ptr->isM300()) {
+    stopH264Stream(LiveView::OSDK_CAMERA_POSITION_NO_1);
     auto deocderPair = streamDecoder.find(LiveView::OSDK_CAMERA_POSITION_NO_1);
     if ((deocderPair != streamDecoder.end()) && deocderPair->second) {
       deocderPair->second->cleanup();
     }
-    stopH264Stream(LiveView::OSDK_CAMERA_POSITION_NO_1);
   } else {
     mainCam_ptr->stopCameraStream();
   }
